@@ -397,14 +397,12 @@ class MMModemInterface(ServiceInterface):
                         if read_setting('data').strip() == 'False':
                             ofono2mm_print("Data toggle changed to False, no longer need to reactivate context", self.verbose)
                             return
-
                         try:
                             ret = await self.activate_internet_context()
                             if ret == True:
                                 return
                         except Exception as e:
                             ofono2mm_print(f"Failed to activate context: {e}", self.verbose)
-
                         await asyncio.sleep(0.3)
 
     async def check_ofono_contexts(self):
@@ -1212,6 +1210,9 @@ class MMModemInterface(ServiceInterface):
                     return True
         except Exception as e:
             ofono2mm_print(f"Failed to activate internet context: {e}", self.verbose)
+            if "org.ofono was not provided by any .service files" in str(e):
+                ofono2mm_print(f"oFono service not available, skipping: {e}", self.verbose)
+                return True
             return False
 
     async def ofono_changed(self, name, varval):
