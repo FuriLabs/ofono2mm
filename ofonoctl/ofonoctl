@@ -76,9 +76,11 @@ def action_list():
                 registration = f"Registered to {network_name} ({strength}%)"
             else:
                 registration = f"{status.capitalize()}"
+            technology = str(properties.get("Technology", "Unknown"))
         except dbus.exceptions.DBusException:
             registration = "Unregistered"
             network_name = "Unknown"
+            technology = "Unknown"
 
         try:
             sim_manager = dbus.Interface(bus.get_object('org.ofono', path), 'org.ofono.SimManager')
@@ -102,7 +104,7 @@ def action_list():
         except dbus.exceptions.DBusException:
             ims_info = "Unknown"
 
-        modem_info.append([model, registration, sim, ims_info])
+        modem_info.append([model, registration, sim, ims_info, technology])
 
         try:
             connection_manager = dbus.Interface(bus.get_object('org.ofono', path), 'org.ofono.ConnectionManager')
@@ -122,7 +124,7 @@ def action_list():
 
     modem_table = tabulate.tabulate(
         modem_info,
-        headers=["Modem", "Status", "SIM", "IMS Status (VS)"],
+        headers=["Modem", "Status", "SIM", "IMS Status (VS)", "Access Technology"],
         tablefmt="grid"
     )
 
