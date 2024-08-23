@@ -236,12 +236,14 @@ class MMModemSimpleInterface(ServiceInterface):
 
         try:
             sim_id = self.ofono_interface_props['org.ofono.SimManager']['CardIdentifier'].value
-        except Exception:
+        except Exception as e:
+            ofono2mm_print(f"Failed to get sim identifier: {e}", self.verbose)
             return False
 
         try:
             carrier_name = self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value
-        except Exception:
+        except Exception as e:
+            ofono2mm_print(f"Failed to get carrier name: {e}", self.verbose)
             return False
 
         try:
@@ -252,7 +254,8 @@ class MMModemSimpleInterface(ServiceInterface):
                     apn = ctx[1].get('AccessPointName', Variant('s', '')).value
                     username = ctx[1].get('Username', Variant('s', '')).value
                     password = ctx[1].get('Password', Variant('s', '')).value
-        except Exception:
+        except Exception as e:
+            ofono2mm_print(f"Failed to get contexts: {e}", self.verbose)
             return False
 
         connection_settings = {
@@ -286,7 +289,8 @@ class MMModemSimpleInterface(ServiceInterface):
                 conn = NetworkManager.Settings.AddConnection(connection_settings)
                 ofono2mm_print(f"Connection '{conn.GetSettings()['connection']['id']}' created successfully with timestamp {current_timestamp}.", self.verbose)
             return True
-        except Exception:
+        except Exception as e:
+            ofono2mm_print(f"Failed to save network manager connection: {e}", self.verbose)
             return False
 
     def network_manager_connection_exists(self, target_sim_id):
