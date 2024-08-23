@@ -1304,7 +1304,8 @@ class MMModemInterface(ServiceInterface):
                 bearer_interface.ofono_changed(name, varval)
 
     def ofono_interface_changed(self, iface):
-        def ch(name, varval):
+        def ofono_interface_property_changed(name, varval):
+            ofono2mm_print(f"Property name: {name}, property value: {varval.value}", self.verbose)
             if iface in self.ofono_interface_props:
                 self.ofono_interface_props[iface][name] = varval
                 self.set_props()
@@ -1320,4 +1321,4 @@ class MMModemInterface(ServiceInterface):
                     self.mm_modem_simple_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_modem_signal_interface:
                     self.mm_modem_signal_interface.ofono_interface_changed(iface)(name, varval)
-        return ch
+        return ofono_interface_property_changed
