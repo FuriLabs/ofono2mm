@@ -67,18 +67,43 @@ class MMModemInterface(ServiceInterface):
         self.bearers = {}
 
         self.unused_interfaces = {
-            "org.ofono.CallSettings",
-            "org.ofono.CallVolume",
-            "org.ofono.SimToolkit",
-            "org.ofono.Phonebook",
-            "org.ofono.SmartMessaging",
-            "org.ofono.PushNotification",
+            "org.nemomobile.ofono.CellInfo",
+            "org.nemomobile.ofono.SimInfo",
+            "org.ofono.AllowedAccessPoints",
+            "org.ofono.AssistedSatelliteNavigation",
+            "org.ofono.AudioSettings",
             "org.ofono.CallBarring",
             "org.ofono.CallForwarding",
+            "org.ofono.CallMeter",
+            "org.ofono.CallSettings",
+            "org.ofono.CallVolume",
+            "org.ofono.CellBroadcast",
+            "org.ofono.HandsfreeAudioCard",
+            "org.ofono.HandsfreeAudioManager",
+            "org.ofono.Handsfree",
+            "org.ofono.IpMultimediaSystem",
+            "org.ofono.ISimApplication",
+            "org.ofono.LocationReporting",
             "org.ofono.MessageWaiting",
-            "org.ofono.AllowedAccessPoints",
-            "org.nemomobile.ofono.CellInfo",
-            "org.nemomobile.ofono.SimInfo"
+            "org.ofono.Message",
+            "org.ofono.OemRaw",
+            "org.ofono.Phonebook",
+            "org.ofono.PushNotification",
+            "org.ofono.SimAuthentication",
+            "org.ofono.SimToolkit",
+            "org.ofono.Siri",
+            "org.ofono.SmartMessaging",
+            "org.ofono.SmsHistory",
+            "org.ofono.TextTelephony",
+            "org.ofono.USimApplication",
+            "org.ofono.cdma.ConnectionManager",
+            "org.ofono.cdma.MessageManager",
+            "org.ofono.cdma.NetworkRegistration",
+            "org.ofono.cdma.VoiceCallManager",
+            "org.ofono.cinterion.HardwareMonitor",
+            "org.ofono.dundee.Device",
+            "org.ofono.dundee.Manager",
+            "org.ofono.intel.LteCoexistence"
         }
 
         self.props = {
@@ -135,50 +160,30 @@ class MMModemInterface(ServiceInterface):
         else:
             ofono2mm_print(f"Add oFono interface for iface {iface}", self.verbose)
 
-        self.ofono_interfaces.update({
-            iface: self.ofono_proxy[iface]
-        })
+        self.ofono_interfaces.update({iface: self.ofono_proxy[iface]})
 
-        try:
-            self.ofono_interface_props.update({
-                iface: await self.ofono_interfaces[iface].call_get_properties()
-            })
+        # these interfaces don't have a GetProperties method
+        if iface == "org.ofono.NetworkTime" or iface == "org.ofono.NetworkMonitor":
+            self.ofono_interface_props.update({iface: {}})
+        else:
+            self.ofono_interface_props.update({iface: await self.ofono_interfaces[iface].call_get_properties()})
 
-            if self.mm_modem3gpp_interface:
-                self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_sim_interface:
-                self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_voice_interface:
-                self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_messaging_interface:
-                self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_simple_interface:
-                self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_signal_interface:
-                self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props.copy()
+        if self.mm_modem3gpp_interface:
+            self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props.copy()
+        if self.mm_sim_interface:
+            self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props.copy()
+        if self.mm_modem_voice_interface:
+            self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props.copy()
+        if self.mm_modem_messaging_interface:
+            self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props.copy()
+        if self.mm_modem_simple_interface:
+            self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props.copy()
+        if self.mm_modem_signal_interface:
+            self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props.copy()
 
+        # these interfaces don't expose any properties over dbus
+        if iface != "org.ofono.NetworkTime" and iface != "org.ofono.NetworkMonitor":
             self.ofono_interfaces[iface].on_property_changed(self.ofono_interface_changed(iface))
-        except DBusError:
-            self.ofono_interface_props.update({
-                iface: {}
-            })
-
-            if self.mm_modem3gpp_interface:
-                self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_sim_interface:
-                self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_voice_interface:
-                self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_messaging_interface:
-                self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_simple_interface:
-                self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            if self.mm_modem_signal_interface:
-                self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props.copy()
-
-            self.ofono_interfaces[iface].on_property_changed(self.ofono_interface_changed(iface))
-        except AttributeError:
-            pass
 
         if self.mm_modem3gpp_interface:
             await self.mm_modem3gpp_interface.set_props()
