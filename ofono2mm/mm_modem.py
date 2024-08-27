@@ -151,8 +151,6 @@ class MMModemInterface(ServiceInterface):
         for iface in self.ofono_props['Interfaces'].value:
             await self.add_ofono_interface(iface)
 
-        self.loop.create_task(self.init_connection_manager())
-
     async def add_ofono_interface(self, iface):
         if iface in self.unused_interfaces:
             ofono2mm_print(f"Interface is {iface} which is unused, skipping", self.verbose)
@@ -191,10 +189,8 @@ class MMModemInterface(ServiceInterface):
             self.mm_sim_interface.set_props()
         if self.mm_modem_messaging_interface and iface == "org.ofono.MessageManager":
             self.mm_modem_messaging_interface.set_props()
-            self.mm_modem_messaging_interface.init_messages()
         if self.mm_modem_voice_interface and iface == "org.ofono.VoiceCallManager":
             self.mm_modem_voice_interface.set_props()
-            self.mm_modem_voice_interface.init_calls()
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface and iface == "org.ofono.NetworkMonitor":
