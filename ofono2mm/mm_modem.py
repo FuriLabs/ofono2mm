@@ -242,7 +242,7 @@ class MMModemInterface(ServiceInterface):
         while True:
             ofono2mm_print("Waiting for oFono network time to appear", self.verbose)
             if 'org.ofono.NetworkTime' in self.ofono_interfaces:
-                ofono2mm_print("oFono network time appeared, initializing time interface", self.verbose)
+                ofono2mm_print("oFono network time appeared, initializing modem time interface", self.verbose)
                 await self.mm_modem_time_interface.init_time()
                 return
             await asyncio.sleep(0.3)
@@ -251,7 +251,7 @@ class MMModemInterface(ServiceInterface):
         while True:
             ofono2mm_print("Waiting for oFono message manager to appear", self.verbose)
             if 'org.ofono.MessageManager' in self.ofono_interfaces:
-                ofono2mm_print("oFono message manager appeared, initializing time interface", self.verbose)
+                ofono2mm_print("oFono message manager appeared, initializing modem messaging interface", self.verbose)
                 self.mm_modem_messaging_interface.set_props()
                 await self.mm_modem_messaging_interface.init_messages()
                 return
@@ -261,7 +261,7 @@ class MMModemInterface(ServiceInterface):
         while True:
             ofono2mm_print("Waiting for oFono voice call manager to appear", self.verbose)
             if 'org.ofono.VoiceCallManager' in self.ofono_interfaces:
-                ofono2mm_print("oFono voice call manager appeared, initializing time interface", self.verbose)
+                ofono2mm_print("oFono voice call manager appeared, initializing modem voice interface", self.verbose)
                 self.mm_modem_voice_interface.set_props()
                 await self.mm_modem_voice_interface.init_calls()
                 return
