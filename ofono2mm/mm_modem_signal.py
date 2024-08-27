@@ -4,17 +4,21 @@ from dbus_next.service import ServiceInterface, method, dbus_property
 from dbus_next.constants import PropertyAccess
 from dbus_next import Variant, DBusError
 
+from ofono2mm.ofono_network_monitor import OfonoNetworkMonitor
 from ofono2mm.logging import ofono2mm_print
 
 class MMModemSignalInterface(ServiceInterface):
-    def __init__(self, modem_name, ofono_props, ofono_interfaces, ofono_interface_props, verbose=False):
+    def __init__(self, bus, modem_name, ofono_client, ofono_props, ofono_interfaces, ofono_interface_props, verbose=False):
         super().__init__('org.freedesktop.ModemManager1.Modem.Signal')
         self.modem_name = modem_name
         ofono2mm_print("Initializing Signal interface", verbose)
+        self.bus = bus
+        self.ofono_client = ofono_client
         self.ofono_props = ofono_props
         self.ofono_interfaces = ofono_interfaces
         self.ofono_interface_props = ofono_interface_props
         self.verbose = verbose
+        self.ofono_network_monitor_interface = False
         self.props = {
             'Rate': Variant('u', 0),
             'RssiThreshold': Variant('u', 0),
@@ -44,30 +48,28 @@ class MMModemSignalInterface(ServiceInterface):
             })
         }
 
-    async def set_props(self):
-        ofono2mm_print("Setting properties", self.verbose)
+    async def init_network_monitor(self):
+        if 'org.ofono.NetworkMonitor' in self.ofono_interfaces:
+            self.ofono_network_monitor_interface = OfonoNetworkMonitor(self.bus, self.modem_name, self.ofono_client, self.ofono_props, self.ofono_interfaces, self.ofono_interface_props, self.set_props, self.verbose)
+            await self.ofono_network_monitor_interface.RegisterAgent('/ofono2mm')
+
+    def set_props(self, cellinfo):
+        ofono2mm_print(f"Setting properties with cellinfo {cellinfo}", self.verbose)
 
         old_props = self.props
-        if 'org.ofono.NetworkMonitor' in self.ofono_interfaces:
-            cellinfo = []
-            try:
-                cellinfo = await self.ofono_interfaces['org.ofono.NetworkMonitor'].call_get_serving_cell_information()
-            except Exception as e:
-                ofono2mm_print(f"Failed to get cell info from NetworkMonitor: {e}", self.verbose)
-
-            if 'Technology' in cellinfo:
-                if cellinfo['Technology'].value == 'nr':
-                    self.props['Nr5g'].value['rssi'] = Variant('d', cellinfo['ChannelQualityIndicator'].value if "ChannelQualityIndicator" in cellinfo else 0)
-                    self.props['Nr5g'].value['rsrq'] = Variant('d', cellinfo['ReferenceSignalReceivedQuality'].value if "ReferenceSignalReceivedQuality" in cellinfo else 0)
-                    self.props['Nr5g'].value['rsrp'] = Variant('d', cellinfo['ReferenceSignalReceivedPower'].value if "ReferenceSignalReceivedPower" in cellinfo else 0)
-                if cellinfo['Technology'].value == 'lte':
-                    self.props['Lte'].value['rssi'] = Variant('d', cellinfo['ChannelQualityIndicator'].value if "ChannelQualityIndicator" in cellinfo else 0)
-                    self.props['Lte'].value['rsrq'] = Variant('d', cellinfo['ReferenceSignalReceivedQuality'].value if "ReferenceSignalReceivedQuality" in cellinfo else 0)
-                    self.props['Lte'].value['rsrp'] = Variant('d', cellinfo['ReferenceSignalReceivedPower'].value if "ReferenceSignalReceivedPower" in cellinfo else 0)
-                if cellinfo['Technology'].value == 'umts':
-                    self.props['Umts'].value['rscp'] = Variant('d', cellinfo['ReceivedSignalCodePower'].value if "ReceivedSignalCodePower" in cellinfo else 0)
-                if cellinfo['Technology'].value == 'gsm':
-                    self.props['Gsm'].value['error-rate'] = Variant('d', cellinfo['BitErrorRate'].value if "BitErrorRate" in cellinfo else 0)
+        if 'Technology' in cellinfo:
+            if cellinfo['Technology'].value == 'nr':
+                self.props['Nr5g'].value['rssi'] = Variant('d', cellinfo['ChannelQualityIndicator'].value if "ChannelQualityIndicator" in cellinfo else 0)
+                self.props['Nr5g'].value['rsrq'] = Variant('d', cellinfo['ReferenceSignalReceivedQuality'].value if "ReferenceSignalReceivedQuality" in cellinfo else 0)
+                self.props['Nr5g'].value['rsrp'] = Variant('d', cellinfo['ReferenceSignalReceivedPower'].value if "ReferenceSignalReceivedPower" in cellinfo else 0)
+            if cellinfo['Technology'].value == 'lte':
+                self.props['Lte'].value['rssi'] = Variant('d', cellinfo['ChannelQualityIndicator'].value if "ChannelQualityIndicator" in cellinfo else 0)
+                self.props['Lte'].value['rsrq'] = Variant('d', cellinfo['ReferenceSignalReceivedQuality'].value if "ReferenceSignalReceivedQuality" in cellinfo else 0)
+                self.props['Lte'].value['rsrp'] = Variant('d', cellinfo['ReferenceSignalReceivedPower'].value if "ReferenceSignalReceivedPower" in cellinfo else 0)
+            if cellinfo['Technology'].value == 'umts':
+                self.props['Umts'].value['rscp'] = Variant('d', cellinfo['ReceivedSignalCodePower'].value if "ReceivedSignalCodePower" in cellinfo else 0)
+            if cellinfo['Technology'].value == 'gsm':
+                self.props['Gsm'].value['error-rate'] = Variant('d', cellinfo['BitErrorRate'].value if "BitErrorRate" in cellinfo else 0)
 
         for prop in self.props:
             if self.props[prop].value != old_props[prop].value:
@@ -113,7 +115,7 @@ class MMModemSignalInterface(ServiceInterface):
 
     def ofono_changed(self, name, varval):
         self.ofono_props[name] = varval
-        asyncio.create_task(self.set_props())
+#        asyncio.create_task(self.set_props())
 
     def ofono_client_changed(self, ofono_client):
         self.ofono_client = ofono_client
@@ -122,6 +124,5 @@ class MMModemSignalInterface(ServiceInterface):
         def ch(name, varval):
             if iface in self.ofono_interface_props:
                 self.ofono_interface_props[iface][name] = varval
-            asyncio.create_task(self.set_props())
-
+#            asyncio.create_task(self.set_props())
         return ch

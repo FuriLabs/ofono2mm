@@ -16,6 +16,7 @@ from .mm_call import *
 from .mm_modem_voice import *
 from .mm_modem_cell_broadcast import *
 from .mm_cbm import *
+from .ofono_network_monitor import *
 from .ofono import *
 
 __all__ = [
@@ -39,5 +40,6 @@ __all__ = [
 	"MMModemVoiceInterface",
 	"MMModemCellBroadcastInterface",
 	"MMCbmInterface",
+	"OfonoNetworkMonitor",
 	"Ofono",
 ]

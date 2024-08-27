@@ -198,8 +198,6 @@ class MMModemInterface(ServiceInterface):
             self.mm_modem_voice_interface.init_calls()
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.set_props()
-        if self.mm_modem_signal_interface and iface == "org.ofono.NetworkMonitor":
-            await self.mm_modem_signal_interface.set_props()
 
     async def remove_ofono_interface(self, iface):
         ofono2mm_print(f"Remove oFono interface for iface {iface}", self.verbose)
@@ -226,9 +224,6 @@ class MMModemInterface(ServiceInterface):
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props.copy()
             self.mm_modem_simple_interface.set_props()
-        if self.mm_modem_signal_interface:
-            self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props.copy()
-            await self.mm_modem_signal_interface.set_props()
 
     async def init_connection_manager(self):
         while True:
@@ -236,6 +231,15 @@ class MMModemInterface(ServiceInterface):
             if 'org.ofono.ConnectionManager' in self.ofono_interfaces:
                 ofono2mm_print("oFono connection manager appeared, initializing check ofono contexts", self.verbose)
                 await self.check_ofono_contexts()
+                return
+            await asyncio.sleep(0.3)
+
+    async def init_network_monitor(self):
+        while True:
+            ofono2mm_print("Waiting for oFono network monitor to appear", self.verbose)
+            if 'org.ofono.NetworkMonitor' in self.ofono_interfaces:
+                ofono2mm_print("oFono network monitor appeared, initializing modem signal interface", self.verbose)
+                await self.mm_modem_signal_interface.init_network_monitor()
                 return
             await asyncio.sleep(0.3)
 
@@ -349,9 +353,10 @@ class MMModemInterface(ServiceInterface):
     async def init_mm_signal_interface(self):
         ofono2mm_print("Initialize Signal interface", self.verbose)
 
-        self.mm_modem_signal_interface = MMModemSignalInterface(self.modem_name, self.ofono_props, self.ofono_interfaces, self.ofono_interface_props, self.verbose)
+        self.mm_modem_signal_interface = MMModemSignalInterface(self.bus, self.modem_name, self.ofono_client, self.ofono_props, self.ofono_interfaces, self.ofono_interface_props, self.verbose)
         self.bus.export(f'/org/freedesktop/ModemManager1/Modem/{self.index}', self.mm_modem_signal_interface)
-        await self.mm_modem_signal_interface.set_props()
+
+        self.loop.create_task(self.init_network_monitor())
 
     async def init_mm_location_interface(self):
         ofono2mm_print("Initialize Location interface", self.verbose)
