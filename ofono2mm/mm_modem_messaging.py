@@ -33,13 +33,11 @@ class MMModemMessagingInterface(ServiceInterface):
             if self.props[prop].value != old_props[prop].value:
                 self.emit_properties_changed({prop: self.props[prop].value})
 
-    async def init_messages(self):
+    def init_messages(self):
         ofono2mm_print("Initializing signals", self.verbose)
 
         if 'org.ofono.MessageManager' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.MessageManager'].on_incoming_message(self.add_incoming_message)
-
-        if 'org.ofono.MessageManager' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.MessageManager'].on_immediate_message(self.add_incoming_message)
 
     def add_incoming_message(self, msg, props):
