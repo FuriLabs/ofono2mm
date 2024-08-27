@@ -190,7 +190,8 @@ class MMInterface(ServiceInterface):
                     mm_modem_interface.init_mm_oma_interface(),
                     mm_modem_interface.init_mm_signal_interface(),
                     mm_modem_interface.init_mm_location_interface(),
-                    mm_modem_interface.init_mm_voice_interface()]
+                    mm_modem_interface.init_mm_voice_interface(),
+                    mm_modem_interface.init_mm_cell_broadcast_interface()]
 
         await asyncio.gather(*promises)
 

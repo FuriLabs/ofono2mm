@@ -18,6 +18,7 @@ from ofono2mm.mm_modem_location import MMModemLocationInterface
 from ofono2mm.mm_sim import MMSimInterface
 from ofono2mm.mm_bearer import MMBearerInterface
 from ofono2mm.mm_modem_voice import MMModemVoiceInterface
+from ofono2mm.mm_modem_cell_broadcast import MMModemCellBroadcastInterface
 from ofono2mm.logging import ofono2mm_print
 from ofono2mm.utils import read_setting, save_setting
 from ofono2mm.ofono import Ofono, DBus
@@ -61,6 +62,7 @@ class MMModemInterface(ServiceInterface):
         self.mm_modem_location_interface = None
         self.mm_modem_voice_interface = None
         self.mm_modem_messaging_interface = None
+        self.mm_modem_cell_broadcast_interface = None
         self.mm_interface_objects = [f'/org/freedesktop/ModemManager1/Modem/{self.index}']
         self.mm_bearer_interfaces = []
         self.selected_current_mode = []
@@ -83,6 +85,7 @@ class MMModemInterface(ServiceInterface):
             "org.ofono.VoiceCallManager",
             "org.ofono.SupplementaryServices",
             "org.ofono.FuriLabs.AT",
+            "org.ofono.CellBroadcast",
         }
 
         self.interfaces_without_props = {
@@ -219,7 +222,7 @@ class MMModemInterface(ServiceInterface):
                 ofono2mm_print(f"Failed to restore saved bands: {e}", self.verbose)
                 retries_left -= 1
                 await asyncio.sleep(0.5)
-        
+
         ofono2mm_print("Successfully restored saved bands", self.verbose)
 
     async def remove_ofono_interface(self, iface):
@@ -292,6 +295,15 @@ class MMModemInterface(ServiceInterface):
                 ofono2mm_print("oFono supplementary services appeared, initializing modem ussd interface", self.verbose)
                 self.mm_modem3gpp_ussd_interface.init_ussd()
                 await self.set_props()
+                return
+            await asyncio.sleep(0.3)
+
+    async def init_cell_broadcast(self):
+        while True:
+            ofono2mm_print("Waiting for oFono cell broadcast to appear", self.verbose)
+            if 'org.ofono.CellBroadcast' in self.ofono_interfaces:
+                ofono2mm_print("oFono cell broadcast appeared, initializing cell broadcast interface", self.verbose)
+                await self.mm_modem_cell_broadcast_interface.init_cbs()
                 return
             await asyncio.sleep(0.3)
 
@@ -401,6 +413,14 @@ class MMModemInterface(ServiceInterface):
 
         self.loop.create_task(self.init_message_manager())
 
+    async def init_mm_cell_broadcast_interface(self):
+        ofono2mm_print("Initialize Cell Broadcast interface", self.verbose)
+
+        self.mm_modem_cell_broadcast_interface = MMModemCellBroadcastInterface(self.bus, self.modem_name, self.ofono_interfaces, self.verbose)
+        self.bus.export(f'/org/freedesktop/ModemManager1/Modem/{self.index}', self.mm_modem_cell_broadcast_interface)
+
+        self.loop.create_task(self.init_cell_broadcast())
+
     def unexport_mm_interface_objects(self):
         self.mm_sim_interface = None
         self.mm_modem3gpp_interface = None
@@ -416,6 +436,7 @@ class MMModemInterface(ServiceInterface):
         self.mm_modem_location_interface = None
         self.mm_modem_voice_interface = None
         self.mm_modem_messaging_interface = None
+        self.mm_modem_cell_broadcast_interface = None
 
         for object in self.mm_interface_objects:
             try:

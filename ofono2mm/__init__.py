@@ -14,6 +14,8 @@ from .mm_bearer import *
 from .mm_sms import *
 from .mm_call import *
 from .mm_modem_voice import *
+from .mm_modem_cell_broadcast import *
+from .mm_cbm import *
 from .dbus_interface_properties import *
 from .ofono import *
 
@@ -36,6 +38,8 @@ __all__ = [
 	"MMSmsInterface",
 	"MMCallInterface",
 	"MMModemVoiceInterface",
+	"MMModemCellBroadcastInterface",
+	"MMCbmInterface",
 	"DBusInterfaceProperties",
 	"Ofono",
 ]
