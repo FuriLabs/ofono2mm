@@ -21,7 +21,9 @@ class MMBearerInterface(ServiceInterface):
         self.verbose = verbose
         self.disconnecting = False
         self.reconnect_task = None
+        self.ofono_ctx = None
         self.active_connect = 0
+        self.own_object_path = None
         self.props = {
             "Interface": Variant('s', ''),
             "Connected": Variant('b', False),
@@ -99,23 +101,19 @@ class MMBearerInterface(ServiceInterface):
 
         if 'org.ofono.ConnectionManager' in self.ofono_interface_props:
             contexts = await self.ofono_interfaces['org.ofono.ConnectionManager'].call_get_contexts()
-            self.context_names = []
-            ctx_idx = 0
             chosen_apn = ''
             chosen_auth_method = ''
             chosen_username = ''
             chosen_password = ''
             for ctx in contexts:
                 name = ctx[1].get('Type', Variant('s', '')).value
-                access_point_name = ctx[1].get('AccessPointName', Variant('s', '')).value
-                auth_method = ctx[1].get('AuthenticationMethod', Variant('s', '')).value
-                username = ctx[1].get('Username', Variant('s', '')).value
-                password = ctx[1].get('Password', Variant('s', '')).value
                 if name.lower() == "internet":
-                    ctx_idx += 1
-                    if access_point_name:
-                        self.context_names.append(access_point_name)
-                        chosen_apn = access_point_name
+                    apn = ctx[1].get('AccessPointName', Variant('s', '')).value
+                    auth_method = ctx[1].get('AuthenticationMethod', Variant('s', '')).value
+                    username = ctx[1].get('Username', Variant('s', '')).value
+                    password = ctx[1].get('Password', Variant('s', '')).value
+                    if apn:
+                        chosen_apn = apn
                         chosen_auth_method = auth_method
                         chosen_username = username
                         chosen_password = password
@@ -156,20 +154,19 @@ class MMBearerInterface(ServiceInterface):
 
     @method()
     async def Connect(self):
-        ofono2mm_print("Connecting", self.verbose)
+        ofono2mm_print("Called bearer connect", self.verbose)
         self.active_connect += 1
         await self.doConnect()
 
     @async_retryable()
     async def doConnect(self):
-        ofono2mm_print("doConnect", self.verbose)
+        ofono2mm_print(f"Connecting the bearer at path {self.own_object_path} with ofono context {self.ofono_ctx}", self.verbose)
         try:
             await self.set_props()
         except Exception as e:
             ofono2mm_print(f"Failed to set props: {e}", self.verbose)
 
         ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
-
         ofono2mm_print(f"Number of active connection requests: {self.active_connect}", self.verbose)
 
         try:
@@ -190,7 +187,7 @@ class MMBearerInterface(ServiceInterface):
 
     @method()
     async def Disconnect(self):
-        ofono2mm_print("Disconnecting", self.verbose)
+        ofono2mm_print("Called bearer disconnect", self.verbose)
         await self.doDisconnect()
 
     async def cancel_reconnect_task(self):
@@ -205,7 +202,7 @@ class MMBearerInterface(ServiceInterface):
                 self.reconnect_task = None
 
     async def doDisconnect(self):
-        ofono2mm_print("doDisconnect", self.verbose)
+        ofono2mm_print(f"Disconnecting the bearer at path {self.own_object_path} with ofono context {self.ofono_ctx}", self.verbose)
         self.disconnecting = True
 
         # Cancel an eventual reconnection task

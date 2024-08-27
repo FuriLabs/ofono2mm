@@ -123,5 +123,4 @@ class MMModemSignalInterface(ServiceInterface):
             if iface in self.ofono_interface_props:
                 self.ofono_interface_props[iface][name] = varval
             asyncio.create_task(self.set_props())
-
         return ch

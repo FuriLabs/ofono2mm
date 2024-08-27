@@ -171,8 +171,11 @@ class MMModemSimpleInterface(ServiceInterface):
 
         for b in self.mm_modem.bearers:
             if self.mm_modem.bearers[b].props['Properties'].value['apn'] == properties['apn']:
-                await self.mm_modem.bearers[b].add_auth_ofono(properties['username'].value if 'username' in properties else '',
-                                                                properties['password'].value if 'password' in properties else '')
+                try:
+                    await self.mm_modem.bearers[b].add_auth_ofono(properties['username'].value if 'username' in properties else '',
+                                                                  properties['password'].value if 'password' in properties else '')
+                except Exception as e:
+                    ofono2mm_print(f"Failed to set ofono authentication: {e}", self.verbose)
                 self.mm_modem.bearers[b].props['Properties'] = Variant('a{sv}', properties)
                 if self.mm_modem.bearers[b].active_connect == 0:
                     self.mm_modem.bearers[b].active_connect += 1
@@ -182,23 +185,26 @@ class MMModemSimpleInterface(ServiceInterface):
                         ofono2mm_print("Saving context toggle state during connection of existing bearers", self.verbose)
                         save_setting('data', 'True')
 
+                    ofono2mm_print(f"Bearer activated at path {b}", self.verbose)
                     return b
-
         try:
             bearer = await self.mm_modem.doCreateBearer(properties)
             if self.mm_modem.bearers[bearer].active_connect == 0:
                 self.mm_modem.bearers[bearer].active_connect += 1
                 await self.mm_modem.bearers[bearer].doConnect()
             else:
+                ofono2mm_print(f"Failed to create bearer, active connect is {self.mm_modem.bearers[bearer].active_connect}", self.verbose)
                 # 0 is always available so just fallback to that, whatever
                 bearer = '/org/freedesktop/ModemManager/Bearer/0'
-        except Exception:
+        except Exception as e:
+            ofono2mm_print(f"Failed to create bearer: {e}", self.verbose)
             bearer = '/org/freedesktop/ModemManager/Bearer/0'
 
         if read_setting('data').strip() != 'True':
             ofono2mm_print("Saving context toggle state on bearer creation", self.verbose)
             save_setting('data', 'True')
 
+        ofono2mm_print(f"Bearer activated at path {bearer}", self.verbose)
         return bearer
 
     @method()
@@ -222,7 +228,7 @@ class MMModemSimpleInterface(ServiceInterface):
                 ofono2mm_print(f"Failed to disconnect bearer {path}: {e}", self.verbose)
 
     @method()
-    async def GetStatus(self) -> 'a{sv}':
+    def GetStatus(self) -> 'a{sv}':
         ofono2mm_print("Returning status", self.verbose)
         self.set_props()
         return self.props
