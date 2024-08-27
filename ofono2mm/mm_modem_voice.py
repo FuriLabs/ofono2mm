@@ -40,7 +40,7 @@ class MMModemVoiceInterface(ServiceInterface):
         else:
             self.props['EmergencyOnly'] = Variant('b', False)
 
-    async def init_calls(self):
+    def init_calls(self):
         ofono2mm_print("Initializing signals", self.verbose)
 
         try:
@@ -51,8 +51,6 @@ class MMModemVoiceInterface(ServiceInterface):
 
         if 'org.ofono.VoiceCallManager' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.VoiceCallManager'].on_call_added(self.add_call)
-
-        if 'org.ofono.VoiceCallManager' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.VoiceCallManager'].on_call_removed(self.remove_call)
 
     def clean_phone_number(self, number):
