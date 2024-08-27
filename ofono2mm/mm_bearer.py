@@ -101,7 +101,10 @@ class MMBearerInterface(ServiceInterface):
             contexts = await self.ofono_interfaces['org.ofono.ConnectionManager'].call_get_contexts()
             self.context_names = []
             ctx_idx = 0
-            chosen_apn = None
+            chosen_apn = ''
+            chosen_auth_method = ''
+            chosen_username = ''
+            chosen_password = ''
             for ctx in contexts:
                 name = ctx[1].get('Type', Variant('s', '')).value
                 access_point_name = ctx[1].get('AccessPointName', Variant('s', '')).value
@@ -117,9 +120,9 @@ class MMBearerInterface(ServiceInterface):
                         chosen_username = username
                         chosen_password = password
 
-            self.props['Properties'].value['apn'] = Variant('s', chosen_apn if chosen_apn != '' else '')
-            self.props['Properties'].value['user'] = Variant('s', chosen_username if chosen_username != '' else '')
-            self.props['Properties'].value['password'] = Variant('s', chosen_password if chosen_password != '' else '')
+            self.props['Properties'].value['apn'] = Variant('s', chosen_apn)
+            self.props['Properties'].value['user'] = Variant('s', chosen_username)
+            self.props['Properties'].value['password'] = Variant('s', chosen_password)
 
             if chosen_auth_method == 'none':
                 self.props['Properties'].value['allowed-auth'] = Variant('u', 1) # none MM_BEARER_ALLOWED_AUTH_NONE
