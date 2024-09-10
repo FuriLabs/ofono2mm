@@ -141,10 +141,11 @@ class MMModemSimpleInterface(ServiceInterface):
             if self.props[prop].value != old_props[prop].value:
                 self.emit_properties_changed({prop: self.props[prop].value})
 
-    def check_signal_strength(self):
+    async def check_signal_strength(self):
         ofono2mm_print("Checking network registration", self.verbose)
 
         try:
+            await self.mm_modem.add_ofono_interface('org.ofono.NetworkRegistration')
             if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
                 if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
                     strength = self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value
@@ -252,6 +253,7 @@ class MMModemSimpleInterface(ServiceInterface):
             return False
 
         try:
+            await self.mm_modem.add_ofono_interface('org.ofono.NetworkRegistration')
             carrier_name = self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value
         except Exception as e:
             ofono2mm_print(f"Failed to get carrier name: {e}", self.verbose)

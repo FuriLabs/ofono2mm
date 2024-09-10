@@ -157,6 +157,9 @@ class MMModemInterface(ServiceInterface):
         if iface in self.unused_interfaces:
             ofono2mm_print(f"Interface is {iface} which is unused, skipping", self.verbose)
             return
+        elif iface in self.ofono_interface_props:
+            ofono2mm_print(f"Interface {iface} was already added, skipping", self.verbose)
+            return
         else:
             ofono2mm_print(f"Add oFono interface for iface {iface}", self.verbose)
 
@@ -169,17 +172,17 @@ class MMModemInterface(ServiceInterface):
             self.ofono_interface_props.update({iface: await self.ofono_interfaces[iface].call_get_properties()})
 
         if self.mm_modem3gpp_interface:
-            self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_sim_interface:
-            self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_modem_voice_interface:
-            self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_modem_messaging_interface:
-            self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_modem_simple_interface:
-            self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_modem_signal_interface:
-            self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props
 
         # these interfaces don't expose any properties over dbus
         if iface != "org.ofono.NetworkTime" and iface != "org.ofono.NetworkMonitor":
@@ -209,27 +212,28 @@ class MMModemInterface(ServiceInterface):
         self.set_props()
 
         if self.mm_modem3gpp_interface:
-            self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props
             await self.mm_modem3gpp_interface.set_props()
         if self.mm_sim_interface:
-            self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props
             self.mm_sim_interface.set_props()
         if self.mm_modem_voice_interface:
-            self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props
             self.mm_modem_voice_interface.set_props()
         if self.mm_modem_messaging_interface:
-            self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props
             self.mm_modem_messaging_interface.set_props()
         if self.mm_modem_simple_interface:
-            self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props
             self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface:
-            self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props.copy()
+            self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props
             await self.mm_modem_signal_interface.set_props()
 
     async def init_connection_manager(self):
         while True:
             ofono2mm_print("Waiting for oFono connection manager to appear", self.verbose)
+            await self.add_ofono_interface('org.ofono.ConnectionManager')
             if 'org.ofono.ConnectionManager' in self.ofono_interfaces:
                 ofono2mm_print("oFono connection manager appeared, initializing check ofono contexts", self.verbose)
                 await self.check_ofono_contexts()
@@ -239,6 +243,7 @@ class MMModemInterface(ServiceInterface):
     async def init_network_time(self):
         while True:
             ofono2mm_print("Waiting for oFono network time to appear", self.verbose)
+            await self.add_ofono_interface('org.ofono.NetworkTime')
             if 'org.ofono.NetworkTime' in self.ofono_interfaces:
                 ofono2mm_print("oFono network time appeared, initializing modem time interface", self.verbose)
                 await self.mm_modem_time_interface.init_time()
@@ -248,6 +253,7 @@ class MMModemInterface(ServiceInterface):
     async def init_message_manager(self):
         while True:
             ofono2mm_print("Waiting for oFono message manager to appear", self.verbose)
+            await self.add_ofono_interface('org.ofono.MessageManager')
             if 'org.ofono.MessageManager' in self.ofono_interfaces:
                 ofono2mm_print("oFono message manager appeared, initializing modem messaging interface", self.verbose)
                 self.mm_modem_messaging_interface.set_props()

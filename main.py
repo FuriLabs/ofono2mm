@@ -232,7 +232,7 @@ class MMInterface(ServiceInterface):
                 ofono2mm_print("Data toggle changed to False, no longer need to activate on startup", self.verbose)
                 return
 
-            strength = mm_modem_simple.check_signal_strength()
+            strength = await mm_modem_simple.check_signal_strength()
 
             if strength == 0:
                 ofono2mm_print("Strength is not available, skipping", self.verbose)
