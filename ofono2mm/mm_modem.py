@@ -163,13 +163,17 @@ class MMModemInterface(ServiceInterface):
         else:
             ofono2mm_print(f"Add oFono interface for iface {iface}", self.verbose)
 
-        self.ofono_interfaces.update({iface: self.ofono_proxy[iface]})
+        try:
+            # these interfaces don't have a GetProperties method
+            if iface == "org.ofono.NetworkTime" or iface == "org.ofono.NetworkMonitor":
+                self.ofono_interface_props.update({iface: {}})
+            else:
+                self.ofono_interface_props.update({iface: await self.ofono_proxy[iface].call_get_properties()})
 
-        # these interfaces don't have a GetProperties method
-        if iface == "org.ofono.NetworkTime" or iface == "org.ofono.NetworkMonitor":
-            self.ofono_interface_props.update({iface: {}})
-        else:
-            self.ofono_interface_props.update({iface: await self.ofono_interfaces[iface].call_get_properties()})
+            self.ofono_interfaces.update({iface: self.ofono_proxy[iface]})
+        except Exception as e:
+            ofono2mm_print(f"oFono interface {iface} was not ready: {e}", self.verbose)
+            return
 
         if self.mm_modem3gpp_interface:
             self.mm_modem3gpp_interface.ofono_interface_props = self.ofono_interface_props
