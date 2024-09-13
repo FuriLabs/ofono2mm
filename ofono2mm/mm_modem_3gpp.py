@@ -176,27 +176,27 @@ class MMModem3gppInterface(ServiceInterface):
         return operators
 
     @method()
-    async def SetEpsUeModeOperation(self, mode: 'u'):
+    def SetEpsUeModeOperation(self, mode: 'u'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot set UE mode of operation for EPS: operation not supported')
 
     @method()
-    async def SetInitialEpsBearerSettings(self, settings: 'a{sv}'):
+    def SetInitialEpsBearerSettings(self, settings: 'a{sv}'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Operation not supported')
 
     @method()
-    async def SetNr5gRegistrationSettings(self, properties: 'a{sv}'):
+    def SetNr5gRegistrationSettings(self, properties: 'a{sv}'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Operation not supported')
 
     @method()
-    async def DisableFacilityLock(self, properties: '(us)'):
+    def DisableFacilityLock(self, properties: '(us)'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Operation not supported')
 
     @method()
-    async def SetCarrierLock(self, data: 'ay'):
+    def SetCarrierLock(self, data: 'ay'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot send set carrier lock request to modem: operation not supported')
 
     @method()
-    async def SetPacketServiceState(self, state: 'u'):
+    def SetPacketServiceState(self, state: 'u'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Explicit packet service attach/detach operation not supported')
 
     @dbus_property(access=PropertyAccess.READ)
@@ -248,7 +248,6 @@ class MMModem3gppInterface(ServiceInterface):
         return self.props['Nr5gRegistrationSettings'].value
 
     def ofono_changed(self, name, varval):
-        self.ofono_props[name] = varval
         asyncio.create_task(self.set_props())
 
     def ofono_client_changed(self, ofono_client):
@@ -256,8 +255,5 @@ class MMModem3gppInterface(ServiceInterface):
 
     def ofono_interface_changed(self, iface):
         def ch(name, varval):
-            if iface in self.ofono_interface_props:
-                self.ofono_interface_props[iface][name] = varval
             asyncio.create_task(self.set_props())
-
         return ch

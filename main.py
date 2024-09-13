@@ -13,9 +13,10 @@ from dbus_fast import DBusError, BusType, Variant
 from ofono2mm import MMModemInterface, Ofono, DBus
 from ofono2mm.utils import async_locked, read_setting
 from ofono2mm.logging import ofono2mm_print
+from typing import Dict
 
-has_bus = False
-sim_i = 0
+def get_version():
+    return "1.22.0"
 
 class MMInterface(ServiceInterface):
     def __init__(self, loop, bus, verbose=False):
@@ -24,19 +25,14 @@ class MMInterface(ServiceInterface):
         self.loop = loop
         self.bus = bus
         self.verbose = verbose
-        self.i = 0
-        self.ofono_client = Ofono(bus)
-        self.dbus_client = DBus(bus)
-        self.mm_modem_interfaces = []
-        self.mm_modem_objects = []
-        self.offline_modems = []
-        self.modem_added_block = False
-        self.apn_task = None
+        self.ofono_client: Ofono = Ofono(bus)
+        self.dbus_client: DBus = DBus(bus)
+        self.modems: Dict[str, MMModemInterface] = {}
         self.loop.create_task(self.check_ofono_presence())
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> 's':
-        return '1.22.0'
+        return get_version()
 
     @method()
     async def ScanDevices(self):
@@ -46,6 +42,7 @@ class MMInterface(ServiceInterface):
             await self.find_ofono_modems()
         except Exception as e:
             ofono2mm_print(f"Failed to scan for devices: {e}", self.verbose)
+            raise DBusError("org.freedesktop.ModemManager1.Error.Core.Failed", "Failed to scan for devices")
 
     async def check_ofono_presence(self):
         ofono2mm_print("Checking ofono presence", self.verbose)
@@ -70,105 +67,70 @@ class MMInterface(ServiceInterface):
         ofono2mm_print("oFono removed", self.verbose)
         self.ofono_manager_interface = None
 
+        for path, modem in self.modems.items():
+            modem.unexport_mm_interface_objects()
+            self.modems.pop(path)
+
+        self.loop.create_task(self.bus.release_name('org.freedesktop.ModemManager1'))
+
     @async_locked
     async def find_ofono_modems(self):
         ofono2mm_print("Finding oFono modems", self.verbose)
 
-        global has_bus, sim_i
-
-        for mm_object in self.mm_modem_objects:
-            self.bus.unexport(mm_object)
-
         self.mm_modem_objects = []
         self.mm_modem_interfaces = []
-        self.offline_modems = []
 
         if not self.ofono_manager_interface:
             ofono2mm_print("oFono manager interface is empty, skipping", self.verbose)
             return
 
-        self.ofono_modem_list = False
-        self.modem_added_block = True
-        while not self.ofono_modem_list:
-            try:
-                if self.ofono_manager_interface is None:
-                    ofono2mm_print("oFono manager interface is not initialized properly. skipping", self.verbose)
-                    return
+        try:
+            modems = await self.ofono_manager_interface.call_get_modems()
+        except DBusError as e:
+            ofono2mm_print(f"Failed to get modems from oFono: {e}", self.verbose)
+            return
 
-                modems = await self.ofono_manager_interface.call_get_modems()
+        ril_modems = [modem for modem in modems if modem[0].startswith("/ril_")]
 
-                for modem in modems:
-                    ofono2mm_print(f"Modems available in oFono: {modem[0]}", self.verbose)
+        if not ril_modems:
+            ofono2mm_print("No ril modems found", self.verbose)
+            return
 
-                self.ofono_modem_list = [
-                    x
-                    for x in modems
-                    if x[0].startswith("/ril_") # FIXME
-                ]
+        modems_to_export = []
 
-                if not self.ofono_modem_list:
-                    ofono2mm_print("No modems available, retrying", self.verbose)
-                    await asyncio.sleep(0.3)
+        for path, props in ril_modems:
+            ofono2mm_print(f"Found modem: {path}, {props}", self.verbose)
+            if not props['Online'].value:
+                await self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].call_set_property('Online', Variant('b', True))
+                props.update(await self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].call_get_properties())
+
+                if not props['Online'].value:
+                    ofono2mm_print(f"Failed to set modem {path} online", self.verbose)
                     continue
 
-                for modem in self.ofono_modem_list:
-                    ofono2mm_print(f"Selected modem: {modem[0]}", self.verbose)
+            sim_manager = self.ofono_client["ofono_modem"][path]['org.ofono.SimManager']
+            sim_props = await sim_manager.call_get_properties()
+            sim_present = sim_props['Present'].value
 
-                    if modem[1]['Online'].value == False:
-                        try:
-                            for i in range(5):
-                                ofono2mm_print(f"Setting modem {modem[0]} to online", self.verbose)
-                                self.ofono_modem = self.ofono_client["ofono_modem"][modem[0]]['org.ofono.Modem']
-                                await self.ofono_modem.call_set_property('Online', Variant('b', True))
-                                modem[1]['Online'].value = True
-                                break
-                        except DBusError as e:
-                            ofono2mm_print(f"Error setting modem {modem[0]} to online: {e}", self.verbose)
-                            self.ofono_modem_list = False
-            except DBusError as e:
-                ofono2mm_print(f"Failed to get the current modem: {e}", self.verbose)
-                self.ofono_modem_list = False
+            # If the SIM card is present, prepend it to the list of modems to export so it gets exported first
+            if sim_present:
+                modems_to_export.insert(0, (path, props))
+            else:
+                modems_to_export.append((path, props))
 
-        self.i = 0
-        sim_i = len(self.ofono_modem_list)
-
-        for modem in self.ofono_modem_list:
-            try:
-                self.ofono_sim_manager = self.ofono_client["ofono_modem"][modem[0]]['org.ofono.SimManager']
-                sim_manager_props = await self.ofono_sim_manager.call_get_properties()
-                sim_present = sim_manager_props['Present'].value
-
-                ofono2mm_print(f"modem is {modem[0]}, online: {modem[1]['Online'].value}, number of sims: {sim_i} sim is present: {sim_present}", self.verbose)
-
-                if sim_present == False and sim_i > 1:
-                    self.offline_modems.append(modem)
-                else:
-                    await self.export_new_modem(modem[0], modem[1])
-            except DBusError as e:
-                print(f"Error interacting with modem {modem[0]}: {e}")
-                continue
-
-        for modem_info in self.offline_modems:
-            await self.export_new_modem(*modem_info)
-
-        if not has_bus and len(self.mm_modem_objects) != 0:
-            await self.bus.request_name('org.freedesktop.ModemManager1')
-            has_bus = True
+        for path, props in modems_to_export:
+            await self.export_new_modem(path, props)
 
     def dbus_name_owner_changed(self, name, old_owner, new_owner):
         if name == "org.ofono":
             ofono2mm_print(f"oFono name owner changed, name: {name}, old owner: {old_owner}, new owner: {new_owner}", self.verbose)
             if new_owner == "":
                 self.ofono_removed()
-            elif old_owner == "":
+            else:
                 self.ofono_added()
 
     def ofono_modem_added(self, path, mprops):
         ofono2mm_print(f"oFono modem added at path {path} and properties {mprops}", self.verbose)
-
-        if self.modem_added_block:
-            ofono2mm_print(f"oFono modem block is on, skipping", self.verbose)
-            return
 
         try:
             self.loop.create_task(self.export_new_modem(path, mprops))
@@ -176,19 +138,22 @@ class MMInterface(ServiceInterface):
             ofono2mm_print(f"Failed to create task for modem {path}: {e}", self.verbose)
 
     async def export_new_modem(self, path, mprops):
-        ofono2mm_print(f"Processing modem {path} with properties {mprops}", self.verbose)
-        for mm_modem in self.mm_modem_interfaces:
-            if mm_modem.modem_name == path:
-                ofono2mm_print(f"Modem {path} is already exported, skipping", self.verbose)
-                return
+        if not '/ril_' in path:
+            # This can happen when, for example, a phone is paired over Bluetooth -- even if the phone isn't connected!
+            # TODO: there is no substantial reason to not support non-RIL modems, but we are just focusing on whatever
+            # provides the best user experience for now. This could be revisited in the future.
+            ofono2mm_print(f"Modem {path} is not a RIL modem, skipping", self.verbose)
+            return
 
-        mm_modem_interface = MMModemInterface(self.loop, self.i, self.bus, self.ofono_client, path, self.verbose)
-        mm_modem_interface.ofono_props = mprops
-        self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].on_property_changed(mm_modem_interface.ofono_changed)
-        await mm_modem_interface.init_ofono_interfaces()
-        self.bus.export(f'/org/freedesktop/ModemManager1/Modem/{self.i}', mm_modem_interface)
-        self.modem_added_block = False
-        mm_modem_interface.set_props()
+        ofono2mm_print(f"Processing modem {path} with properties {mprops}", self.verbose)
+
+        if path in self.modems:
+            ofono2mm_print(f"Modem {path} already exists. Not sure why we're here.", self.verbose)
+            return
+
+        index = int(path.split('_')[-1])
+
+        mm_modem_interface = MMModemInterface(self.loop, index, self.bus, self.ofono_client, path, self.verbose)
         promises = [mm_modem_interface.init_mm_sim_interface(),
                     mm_modem_interface.init_mm_3gpp_interface(),
                     mm_modem_interface.init_mm_3gpp_ussd_interface(),
@@ -206,15 +171,11 @@ class MMInterface(ServiceInterface):
 
         await asyncio.gather(*promises)
 
-        self.mm_modem_interfaces.append(mm_modem_interface)
-        self.mm_modem_objects.append(f'/org/freedesktop/ModemManager1/Modem/{self.i}')
-        self.i += 1
+
+        self.modems[path] = mm_modem_interface
 
         mm_modem_simple = mm_modem_interface.get_mm_modem_simple_interface()
-        try:
-            self.apn_task = self.loop.create_task(self.simple_set_apn(mm_modem_simple))
-        except Exception:
-            pass
+        self.loop.create_task(self.simple_set_apn(mm_modem_simple))
 
         if read_setting('data').strip() == 'True':
             ofono2mm_print("Activating context on startup", self.verbose)
@@ -253,8 +214,7 @@ class MMInterface(ServiceInterface):
 
         while True:
             ret = await mm_modem_simple.network_manager_set_apn()
-            if ret == True:
-                self.apn_task = None
+            if ret:
                 return
 
             await asyncio.sleep(2)
@@ -262,19 +222,9 @@ class MMInterface(ServiceInterface):
     def ofono_modem_removed(self, path):
         ofono2mm_print(f"oFono modem removed at path {path}", self.verbose)
 
-        for mm_object in self.mm_modem_objects:
-            try:
-                for mm_modem in self.mm_modem_interfaces:
-                    if mm_modem.modem_name == path:
-                        ofono2mm_print(f"oFono path matches our modem interface path, unexporting", self.verbose)
-                        mm_modem.unexport_mm_interface_objects()
-                        self.bus.unexport(mm_object)
-                        mm_modem = None
-            except Exception as e:
-                ofono2mm_print(f"Failed to unexport modem at path {path} with object path {mm_object}: {e}", self.verbose)
-
-        self.mm_modem_objects = []
-        self.mm_modem_interfaces = []
+        if path in self.modems:
+            self.modems[path].unexport_mm_interface_objects()
+            self.modems.pop(path)
 
     @method()
     def SetLogging(self, level: 's'):
@@ -287,9 +237,6 @@ class MMInterface(ServiceInterface):
     @method()
     def InhibitDevice(self, uid: 's', inhibit: 'b'):
         ofono2mm_print(f"Inhibit device with uid {uid} set to {inhibit}", self.verbose)
-
-def get_version():
-    return "1.22.0"
 
 def print_version():
     version = get_version()

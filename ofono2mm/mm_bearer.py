@@ -100,7 +100,20 @@ class MMBearerInterface(ServiceInterface):
         old_props = self.props
 
         if 'org.ofono.ConnectionManager' in self.ofono_interface_props:
-            contexts = await self.ofono_interfaces['org.ofono.ConnectionManager'].call_get_contexts()
+            # GetContexts can take a few seconds to come up. If we fail with a DBusError, we'll just wait a bit and try again.
+            retries_left = 5
+            while retries_left > 0:
+                try:
+                    contexts = await self.ofono_proxy['org.ofono.ConnectionManager'].call_get_contexts()
+                    break
+                except Exception as e:
+                    retries_left -= 1
+                    if retries_left == 0:
+                        ofono2mm_print(f"Failed to get contexts: {e}", self.verbose)
+                        raise e
+                    else:
+                        await asyncio.sleep(0.2)
+
             chosen_apn = ''
             chosen_auth_method = ''
             chosen_username = ''
@@ -254,7 +267,6 @@ class MMBearerInterface(ServiceInterface):
             self.emit_properties_changed({'Ip4Config': self.props['Ip4Config'].value})
 
     def ofono_changed(self, name, varval):
-        self.ofono_props[name] = varval
         asyncio.create_task(self.set_props())
 
     def ofono_client_changed(self, ofono_client):
@@ -265,5 +277,4 @@ class MMBearerInterface(ServiceInterface):
             if iface in self.ofono_interface_props:
                 self.ofono_interface_props[iface][name] = varval
             asyncio.create_task(self.set_props())
-
         return ch
