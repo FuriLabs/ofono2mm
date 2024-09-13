@@ -274,7 +274,6 @@ class MMModemInterface(ServiceInterface):
         if self.mm_modem_signal_interface:
             self.mm_modem_signal_interface.ofono_interface_props = self.ofono_interface_props
 
-        # these interfaces don't expose any properties over dbus
         if iface not in self.interfaces_without_props:
             self.ofono_interface_props[iface].on('*', self.ofono_interface_changed(iface))
 
@@ -1375,7 +1374,7 @@ class MMModemInterface(ServiceInterface):
 
     def ofono_interface_changed(self, iface):
         def ofono_interface_property_changed(name, varval):
-            # print(f"Property name: {name}, property value: {varval.value}")
+            ofono2mm_print(f"Property name: {name}, property value: {varval.value}", True)
             if iface in self.ofono_interface_props:
                 self.set_props()
                 if self.mm_modem3gpp_interface:

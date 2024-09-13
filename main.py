@@ -140,6 +140,8 @@ class MMInterface(ServiceInterface):
     async def export_new_modem(self, path, mprops):
         if not '/ril_' in path:
             # This can happen when, for example, a phone is paired over Bluetooth -- even if the phone isn't connected!
+            # TODO: there is no substantial reason to not support non-RIL modems, but we are just focusing on whatever
+            # provides the best user experience for now. This could be revisited in the future.
             ofono2mm_print(f"Modem {path} is not a RIL modem, skipping", self.verbose)
             return
 
