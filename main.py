@@ -4,11 +4,11 @@ import asyncio
 from os import environ
 from argparse import ArgumentParser
 
-from dbus_next.aio import MessageBus
-from dbus_next.service import (ServiceInterface,
+from dbus_fast.aio import MessageBus
+from dbus_fast.service import (ServiceInterface,
                                method, dbus_property)
-from dbus_next.constants import PropertyAccess
-from dbus_next import DBusError, BusType, Variant
+from dbus_fast.constants import PropertyAccess
+from dbus_fast import DBusError, BusType, Variant
 
 from ofono2mm import MMModemInterface, Ofono, DBus
 from ofono2mm.utils import async_locked, read_setting

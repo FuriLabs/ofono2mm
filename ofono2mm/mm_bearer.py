@@ -1,8 +1,8 @@
 import asyncio
 
-from dbus_next.service import ServiceInterface, method, dbus_property
-from dbus_next.constants import PropertyAccess
-from dbus_next import Variant
+from dbus_fast.service import ServiceInterface, method, dbus_property
+from dbus_fast.constants import PropertyAccess
+from dbus_fast import Variant
 
 from ofono2mm.utils import async_retryable, save_setting, read_setting
 from ofono2mm.logging import ofono2mm_print

@@ -1,7 +1,7 @@
-from dbus_next.service import (ServiceInterface,
+from dbus_fast.service import (ServiceInterface,
                                method, dbus_property, signal)
-from dbus_next.constants import PropertyAccess
-from dbus_next import Variant, DBusError, BusType
+from dbus_fast.constants import PropertyAccess
+from dbus_fast import Variant, DBusError, BusType
 
 from ofono2mm.mm_modem_3gpp import MMModem3gppInterface
 from ofono2mm.mm_modem_3gpp_ussd import MMModem3gppUssdInterface

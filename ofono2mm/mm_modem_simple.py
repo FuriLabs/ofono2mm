@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import NetworkManager
 
-from dbus_next.service import ServiceInterface, method
-from dbus_next import Variant, DBusError
+from dbus_fast.service import ServiceInterface, method
+from dbus_fast import Variant, DBusError
 
 from ofono2mm.logging import ofono2mm_print
 from ofono2mm.utils import save_setting, read_setting

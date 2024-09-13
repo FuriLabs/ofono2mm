@@ -13,7 +13,7 @@ Package: ofono2mm
 Architecture: all
 Depends: ${misc:Depends},
          ${python3:Depends},
-	 python3-dbus-next,
+	 python3-dbus-fast,
 	 python3-gi,
 	 modemmanager,
 	 geoclue-2.0,

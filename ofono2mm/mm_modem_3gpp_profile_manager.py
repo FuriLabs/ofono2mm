@@ -1,7 +1,7 @@
-from dbus_next.service import (ServiceInterface,
+from dbus_fast.service import (ServiceInterface,
                                method, dbus_property, signal)
-from dbus_next.constants import PropertyAccess
-from dbus_next import Variant
+from dbus_fast.constants import PropertyAccess
+from dbus_fast import Variant
 
 from ofono2mm.logging import ofono2mm_print
 
