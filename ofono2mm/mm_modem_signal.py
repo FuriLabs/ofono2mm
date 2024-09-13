@@ -112,7 +112,6 @@ class MMModemSignalInterface(ServiceInterface):
         return self.props['Nr5g'].value
 
     def ofono_changed(self, name, varval):
-        self.ofono_props[name] = varval
         asyncio.create_task(self.set_props())
 
     def ofono_client_changed(self, ofono_client):
@@ -120,7 +119,5 @@ class MMModemSignalInterface(ServiceInterface):
 
     def ofono_interface_changed(self, iface):
         def ch(name, varval):
-            if iface in self.ofono_interface_props:
-                self.ofono_interface_props[iface][name] = varval
             asyncio.create_task(self.set_props())
         return ch
