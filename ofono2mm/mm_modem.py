@@ -419,11 +419,23 @@ class MMModemInterface(ServiceInterface):
         ofono2mm_print("Checking ofono contexts", self.verbose)
 
         global bearer_i
-        if not 'org.ofono.ConnectionManager' in self.ofono_interfaces:
-            ofono2mm_print("oFono ConnectionManager is not available, skipping", self.verbose)
-            return
 
-        contexts = await self.ofono_proxy['org.ofono.ConnectionManager'].call_get_contexts();
+        # ConnectionManager and get_contexts can take a bit to come up, so...
+
+        retries_left = 3
+
+        while retries_left > 0:
+            try:
+                contexts = await self.ofono_proxy['org.ofono.ConnectionManager'].call_get_contexts()
+                break
+            except Exception as e:
+                retries_left -= 1
+                if retries_left > 0:
+                    await asyncio.sleep(0.5)
+                else:
+                    ofono2mm_print(f"Failed to get contexts: {e}", self.verbose)
+                    return
+
         old_bearer_list = self.props['Bearers'].value
         for ctx in contexts:
             if ctx[1]['Type'].value == "internet":
