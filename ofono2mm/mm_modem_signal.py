@@ -76,7 +76,6 @@ class MMModemSignalInterface(ServiceInterface):
     @method()
     async def Setup(self, rate: 'u'):
         ofono2mm_print(f"Setup with rate {rate}", self.verbose)
-        self.set_props()
         self.props['Rate'] = Variant('u', rate)
 
     @method()
