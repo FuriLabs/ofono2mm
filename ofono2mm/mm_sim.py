@@ -17,7 +17,7 @@ class MMSimInterface(ServiceInterface):
         self.props = {
             'Active': Variant('b', True),
             'SimIdentifier': Variant('s', ''),
-            'IMSI': Variant('s', '0'),
+            'Imsi': Variant('s', '0'),
             'Eid': Variant('s', ''),
             'OperatorIdentifier': Variant('s', '0'),
             'OperatorName': Variant('s', ''),
@@ -48,9 +48,9 @@ class MMSimInterface(ServiceInterface):
             else:
                 self.props['SimIdentifier'] = Variant('s', '')
             if 'SubscriberIdentity' in self.ofono_interface_props['org.ofono.SimManager']:
-                self.props['IMSI'] = Variant('s', self.ofono_interface_props['org.ofono.SimManager']['SubscriberIdentity'].value)
+                self.props['Imsi'] = Variant('s', self.ofono_interface_props['org.ofono.SimManager']['SubscriberIdentity'].value)
             else:
-                self.props['IMSI'] = Variant('s', '')
+                self.props['Imsi'] = Variant('s', '')
 
             if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.SimManager']:
                 MCC = self.ofono_interface_props['org.ofono.SimManager']['MobileCountryCode'].value
@@ -67,7 +67,7 @@ class MMSimInterface(ServiceInterface):
         else:
             self.props['Active'] = Variant('b', False)
             self.props['SimIdentifier'] = Variant('s', '')
-            self.props['IMSI'] = Variant('s', '')
+            self.props['Imsi'] = Variant('s', '')
             self.props['OperatorIdentifier'] = Variant('s', '')
             self.props['PreferredNetworks'] = Variant('a(su)', [])
 
@@ -149,8 +149,8 @@ class MMSimInterface(ServiceInterface):
         return self.props['SimIdentifier'].value
 
     @dbus_property(access=PropertyAccess.READ)
-    def IMSI(self) -> 's':
-        return self.props['IMSI'].value
+    def Imsi(self) -> 's':
+        return self.props['Imsi'].value
 
     @dbus_property(access=PropertyAccess.READ)
     def Eid(self) -> 's':
