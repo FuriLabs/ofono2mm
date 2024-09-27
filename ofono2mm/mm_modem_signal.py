@@ -7,13 +7,12 @@ from dbus_fast import Variant, DBusError
 from ofono2mm.logging import ofono2mm_print
 
 class MMModemSignalInterface(ServiceInterface):
-    def __init__(self, modem_name, ofono_props, ofono_interfaces, ofono_interface_props, verbose=False):
+    def __init__(self, modem_name, ofono_interfaces, verbose=False):
         super().__init__('org.freedesktop.ModemManager1.Modem.Signal')
         self.modem_name = modem_name
         ofono2mm_print("Initializing Signal interface", verbose)
-        self.ofono_props = ofono_props
         self.ofono_interfaces = ofono_interfaces
-        self.ofono_interface_props = ofono_interface_props
+        self.is_busy = False
         self.verbose = verbose
         self.props = {
             'Rate': Variant('u', 0),
@@ -47,13 +46,17 @@ class MMModemSignalInterface(ServiceInterface):
     async def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
-        old_props = self.props
-        if 'org.ofono.NetworkMonitor' in self.ofono_interfaces:
+        if 'org.ofono.NetworkMonitor' in self.ofono_interfaces and not self.is_busy:
+            self.is_busy = True
+            old_props = self.props.copy()
+
             cellinfo = []
             try:
                 cellinfo = await self.ofono_interfaces['org.ofono.NetworkMonitor'].call_get_serving_cell_information()
             except Exception as e:
                 ofono2mm_print(f"Failed to get cell info from NetworkMonitor: {e}", self.verbose)
+            finally:
+                self.is_busy = False
 
             if 'Technology' in cellinfo:
                 if cellinfo['Technology'].value == 'nr':
@@ -69,9 +72,9 @@ class MMModemSignalInterface(ServiceInterface):
                 if cellinfo['Technology'].value == 'gsm':
                     self.props['Gsm'].value['error-rate'] = Variant('d', cellinfo['BitErrorRate'].value if "BitErrorRate" in cellinfo else 0)
 
-        for prop in self.props:
-            if self.props[prop].value != old_props[prop].value:
-                self.emit_properties_changed({prop: self.props[prop].value})
+            for prop in self.props:
+                if self.props[prop].value != old_props[prop].value:
+                    self.emit_properties_changed({prop: self.props[prop].value})
 
     @method()
     async def Setup(self, rate: 'u'):
