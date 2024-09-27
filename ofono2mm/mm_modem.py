@@ -338,7 +338,7 @@ class MMModemInterface(ServiceInterface):
     async def init_mm_signal_interface(self):
         ofono2mm_print("Initialize Signal interface", self.verbose)
 
-        self.mm_modem_signal_interface = MMModemSignalInterface(self.modem_name, self.ofono_props, self.ofono_interfaces, self.ofono_interface_props, self.verbose)
+        self.mm_modem_signal_interface = MMModemSignalInterface(self.modem_name, self.ofono_interfaces, self.verbose)
         self.bus.export(f'/org/freedesktop/ModemManager1/Modem/{self.index}', self.mm_modem_signal_interface)
         await self.mm_modem_signal_interface.set_props()
 
@@ -571,9 +571,13 @@ class MMModemInterface(ServiceInterface):
         old_state = self.props['State'].value
         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
         if 'Powered' in self.ofono_props and self.ofono_props['Powered'].value and 'org.ofono.SimManager' in self.ofono_interface_props:
+            ofono2mm_print("Have Powered and SimManager, setting properties", self.verbose)
             if 'Present' in self.ofono_interface_props['org.ofono.SimManager']:
-                if self.ofono_interface_props['org.ofono.SimManager']['Present'].value and 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager']:
-                    if self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none':
+                ofono2mm_print("Have Present, setting properties", self.verbose)
+                if self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
+                    ofono2mm_print("Have PinRequired, setting properties", self.verbose)
+                    if not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none':
+                        ofono2mm_print("PinRequired is none, setting properties", self.verbose)
                         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
                         if self.ofono_props['Online'].value:
                             if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
@@ -601,6 +605,8 @@ class MMModemInterface(ServiceInterface):
                     self.props['Sim'] = self.sim
                     self.props['StateFailedReason'] = Variant('i', 0) # no failure MM_MODEM_STATE_FAILED_REASON_NONE
                 else:
+                    ofono2mm_print("Don't have PinRequired, setting properties", self.verbose)
+                    ofono2mm_print("But do we have Present: " + str(self.ofono_interface_props['org.ofono.SimManager']['Present'].value), self.verbose)
                     self.props['Sim'] = Variant('o', '/')
                     self.props['State'] = Variant('i', -1) # state unknown
                     self.props['StateFailedReason'] = Variant('i', 2) # sim missing MM_MODEM_STATE_FAILED_REASON_SIM_MISSING
