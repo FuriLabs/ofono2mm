@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import asyncio
+import sys
 from os import environ
 from argparse import ArgumentParser
 
@@ -254,6 +255,10 @@ def custom_help(parser):
     print("\nDBus system service to control mobile broadband modems through oFono.")
 
 async def main():
+    # Disable buffering for stdout and stderr so that logs are written immediately
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+
     parser = ArgumentParser(description="Run the ModemManager interface.", add_help=False)
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output.')
     parser.add_argument('-V', '--version', action='store_true', help='Print version.')
