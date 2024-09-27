@@ -73,8 +73,7 @@ class MMInterface(ServiceInterface):
 
         self.loop.create_task(self.bus.release_name('org.freedesktop.ModemManager1'))
 
-    @async_locked
-    async def find_ofono_modems(self):
+    async def find_ofono_modems(self, retry_counter=5):
         ofono2mm_print("Finding oFono modems", self.verbose)
 
         self.mm_modem_objects = []
@@ -94,7 +93,15 @@ class MMInterface(ServiceInterface):
 
         if not ril_modems:
             ofono2mm_print("No ril modems found", self.verbose)
-            return
+            # This can happen if we try to connect too early. Give it a couple seconds and give it some more shots
+            # Seriously though, that's fucking stupid.
+            if retry_counter <= 0:
+                ofono2mm_print("No ril modems found after retries, giving up", self.verbose)
+                return
+
+            ofono2mm_print("No ril modems found, retrying", self.verbose)
+            await asyncio.sleep(2)
+            await self.find_ofono_modems(retry_counter - 1)
 
         modems_to_export = []
 
