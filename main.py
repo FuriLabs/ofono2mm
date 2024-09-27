@@ -69,7 +69,7 @@ class MMInterface(ServiceInterface):
 
         for path, modem in self.modems.items():
             modem.unexport_mm_interface_objects()
-            self.modems.pop(path)
+        self.modems.clear()
 
         self.loop.create_task(self.bus.release_name('org.freedesktop.ModemManager1'))
 
