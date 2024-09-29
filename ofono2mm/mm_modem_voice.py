@@ -210,7 +210,7 @@ class MMModemVoiceInterface(ServiceInterface):
         return True
 
     @signal()
-    def CallAdded(self, path) -> 's':
+    def CallAdded(self, path) -> 'o':
         ofono2mm_print(f"Signal: Call added with object path {path}", self.verbose)
         return path
 
