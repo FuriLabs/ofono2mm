@@ -324,10 +324,11 @@ class MMModemSimpleInterface(ServiceInterface):
 
         for conn in connections:
             conn_settings = conn.GetSettings()
-            if 'gsm' in conn_settings:
+            if 'gsm' in conn_settings and 'sim-id' in conn_settings['gsm']:
                 apn = conn_settings['gsm']['sim-id']
                 if apn == target_sim_id:
                     found = True
+                    break
 
         ofono2mm_print(f"Connection for SIM ID {target_sim_id} exists: {found}", self.verbose)
         if found:
