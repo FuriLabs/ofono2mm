@@ -298,9 +298,18 @@ class MMModemSimpleInterface(ServiceInterface):
             connection_settings['gsm']['password'] = f'{password}'
 
         try:
-            if self.network_manager_connection_exists(f'{sim_id}') == False:
+            conn = self.network_manager_connection_exists(f'{sim_id}')
+            if not conn:
                 conn = NetworkManager.Settings.AddConnection(connection_settings)
                 ofono2mm_print(f"Connection '{conn.GetSettings()['connection']['id']}' created successfully with timestamp {current_timestamp}.", self.verbose)
+
+            active_connections = NetworkManager.NetworkManager.ActiveConnections
+            for active_conn in active_connections:
+                conn_path = active_conn.Connection.object_path
+                if conn_path == conn.object_path:
+                    return True
+
+            NetworkManager.NetworkManager.ActivateConnection(conn.object_path, "/", "/")
             return True
         except Exception as e:
             ofono2mm_print(f"Failed to save network manager connection: {e}", self.verbose)
@@ -327,14 +336,11 @@ class MMModemSimpleInterface(ServiceInterface):
             if 'gsm' in conn_settings and 'sim-id' in conn_settings['gsm']:
                 apn = conn_settings['gsm']['sim-id']
                 if apn == target_sim_id:
-                    found = True
+                    found = conn
                     break
 
         ofono2mm_print(f"Connection for SIM ID {target_sim_id} exists: {found}", self.verbose)
-        if found:
-            return True
-        else:
-            return False
+        return found
 
     def ofono_changed(self, name, varval):
         self.set_props()
