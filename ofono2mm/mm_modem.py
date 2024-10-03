@@ -1017,6 +1017,10 @@ class MMModemInterface(ServiceInterface):
         ofono2mm_print(f"Setting current modes to {modes}", self.verbose)
 
         if modes in self.props['SupportedModes'].value:
+            if True:
+                # Do nothing for now. This doesn't work well.
+                return
+
             if modes[1] == 16:
                 await self.ofono_proxy['org.ofono.RadioSettings'].call_set_property('TechnologyPreference', Variant('s', 'nr'))
             if modes[1] == 8:
