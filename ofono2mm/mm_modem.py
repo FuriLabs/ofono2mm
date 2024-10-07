@@ -169,6 +169,8 @@ class MMModemInterface(ServiceInterface):
         self.sim = Variant('o', f'/org/freedesktop/ModemManager/SIM/{self.index}')
         self.bearers = {}
 
+        self.was_powered = False
+
         self.used_interfaces = {
             "org.ofono.Modem",
             "org.ofono.NetworkRegistration",
@@ -239,7 +241,7 @@ class MMModemInterface(ServiceInterface):
 
         await asyncio.gather(*promises)
 
-        self.set_props()
+        await self.set_props()
         self.loop.create_task(self.init_connection_manager())
 
         # Release and request the name so other apps realize we're here.
@@ -305,7 +307,7 @@ class MMModemInterface(ServiceInterface):
         if iface in self.ofono_interfaces:
             self.ofono_interfaces.pop(iface)
 
-        self.set_props()
+        await self.set_props()
 
         if self.mm_modem3gpp_interface:
             await self.mm_modem3gpp_interface.set_props()
@@ -326,7 +328,7 @@ class MMModemInterface(ServiceInterface):
             if 'org.ofono.ConnectionManager' in self.ofono_interfaces:
                 ofono2mm_print("oFono connection manager appeared, initializing check ofono contexts", self.verbose)
                 await self.check_ofono_contexts()
-                self.set_props()
+                await self.set_props()
                 return
             await asyncio.sleep(0.3)
 
@@ -336,7 +338,7 @@ class MMModemInterface(ServiceInterface):
             if 'org.ofono.NetworkTime' in self.ofono_interfaces:
                 ofono2mm_print("oFono network time appeared, initializing modem time interface", self.verbose)
                 await self.mm_modem_time_interface.init_time()
-                self.set_props()
+                await self.set_props()
                 return
             await asyncio.sleep(0.3)
 
@@ -347,7 +349,7 @@ class MMModemInterface(ServiceInterface):
                 ofono2mm_print("oFono message manager appeared, initializing modem messaging interface", self.verbose)
                 self.mm_modem_messaging_interface.set_props()
                 self.mm_modem_messaging_interface.init_messages()
-                self.set_props()
+                await self.set_props()
                 return
             await asyncio.sleep(0.3)
 
@@ -358,7 +360,7 @@ class MMModemInterface(ServiceInterface):
                 ofono2mm_print("oFono voice call manager appeared, initializing modem voice interface", self.verbose)
                 self.mm_modem_voice_interface.set_props()
                 self.mm_modem_voice_interface.init_calls()
-                self.set_props()
+                await self.set_props()
                 return
             await asyncio.sleep(0.3)
 
@@ -372,8 +374,8 @@ class MMModemInterface(ServiceInterface):
         self.mm_interface_objects.append(f'/org/freedesktop/ModemManager/SIM/{self.index}')
 
         # When Present changes, call set_props on myself AND on the SIM interface
-        def _on_present_changed(prop, value):
-            self.set_props()
+        async def _on_present_changed(prop, value):
+            await self.set_props()
             self.mm_sim_interface.set_props()
 
         self.ofono_interface_props['org.ofono.SimManager'].on('Present', _on_present_changed)
@@ -674,7 +676,7 @@ class MMModemInterface(ServiceInterface):
             bearer_i += 1
             self.emit_properties_changed({'Bearers': self.props['Bearers'].value})
 
-    def set_props(self):
+    async def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
         old_props = self.props.copy()
@@ -684,6 +686,21 @@ class MMModemInterface(ServiceInterface):
             ofono2mm_print("Have Powered and SimManager, setting properties", self.verbose)
             if 'Present' in self.ofono_interface_props['org.ofono.SimManager']:
                 ofono2mm_print("Have Present, setting properties", self.verbose)
+                if not self.was_powered:
+                    # Bring the modem online now that it's powered
+                    try:
+                        await self.ofono_proxy['org.ofono.Modem'].call_set_property('Online', Variant('b', True))
+                        self.was_powered = True
+
+                        # Also enable data if we need
+                        # FIXME: this is a bit of a hack. Calling into context_active_changed is silly, the logic should be
+                        # extracted into a separate function. But, as common wisdom goes, "move fast and break things".
+                        self.loop.create_task(self.context_active_changed("Active", None))
+                    except Exception as e:
+                        # Might happen in airplane mode although powered should be false. Just coverin' our bases.
+                        ofono2mm_print(f"Failed to set Online to True: {e}", self.verbose)
+                        pass
+
                 if self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
                     ofono2mm_print("Have PinRequired, setting properties", self.verbose)
                     if not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none':
@@ -726,6 +743,7 @@ class MMModemInterface(ServiceInterface):
 
             self.props['PowerState'] = Variant('i', 3) # power is on MM_MODEM_POWER_STATE_ON
         else:
+            self.was_powered = False
             self.props['State'] = Variant('i', 3) # modem is disabled MM_MODEM_STATE_DISABLED
             self.props['PowerState'] = Variant('i', 1) # power is off MM_MODEM_POWER_STATE_OFF
 
@@ -954,7 +972,7 @@ class MMModemInterface(ServiceInterface):
         except Exception as e:
             ofono2mm_print(f"Failed to enable with state {enable}: {e}", self.verbose)
 
-        self.set_props()
+        await self.set_props()
 
     @method()
     def ListBearers(self) -> 'ao':
@@ -1382,7 +1400,7 @@ class MMModemInterface(ServiceInterface):
             return False
 
     async def ofono_changed(self, name, varval):
-        self.set_props()
+        await self.set_props()
         if self.mm_modem3gpp_interface:
             self.mm_modem3gpp_interface.ofono_changed(name, varval)
         if self.mm_sim_interface:
@@ -1400,10 +1418,10 @@ class MMModemInterface(ServiceInterface):
                 bearer_interface.ofono_changed(name, varval)
 
     def ofono_interface_changed(self, iface):
-        def ofono_interface_property_changed(name, varval):
+        async def ofono_interface_property_changed(name, varval):
             ofono2mm_print(f"Property name: {name}, property value: {varval.value}", True)
             if iface in self.ofono_interface_props:
-                self.set_props()
+                await self.set_props()
                 if self.mm_modem3gpp_interface:
                     self.mm_modem3gpp_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_sim_interface:
