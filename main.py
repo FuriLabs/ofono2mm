@@ -109,16 +109,23 @@ class MMInterface(ServiceInterface):
         for path, props in ril_modems:
             ofono2mm_print(f"Found modem: {path}, {props}", self.verbose)
             if not props['Online'].value:
-                await self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].call_set_property('Online', Variant('b', True))
+                try:
+                    await self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].call_set_property('Online', Variant('b', True))
+                except DBusError as e:
+                    # Can happen if airplane mode is on. Don't worry about it.
+                    ofono2mm_print(f"Failed to set modem {path} online: {e}", self.verbose)
+                    pass
+
                 props.update(await self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].call_get_properties())
 
-                if not props['Online'].value:
-                    ofono2mm_print(f"Failed to set modem {path} online", self.verbose)
-                    continue
-
-            sim_manager = self.ofono_client["ofono_modem"][path]['org.ofono.SimManager']
-            sim_props = await sim_manager.call_get_properties()
-            sim_present = sim_props['Present'].value
+            try:
+                sim_manager = self.ofono_client["ofono_modem"][path]['org.ofono.SimManager']
+                sim_props = await sim_manager.call_get_properties()
+                sim_present = sim_props['Present'].value
+            except DBusError as e:
+                # Can also happen if airplane mode is on.
+                ofono2mm_print(f"Failed to get SIM properties for modem {path}: {e}", self.verbose)
+                sim_present = False
 
             # If the SIM card is present, prepend it to the list of modems to export so it gets exported first
             if sim_present:
