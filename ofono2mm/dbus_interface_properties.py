@@ -56,17 +56,27 @@ class DBusInterfaceProperties:
         def __contains__(self, prop):
             return prop in self.props
 
-        def _on_property_changed(self, prop, value):
+        async def _on_property_changed(self, prop, value):
             if prop in self.props and self.props[prop].value == value.value:
                 # Well that ain't much of a change innit
                 return
             self.props[prop] = value
+
+            # Watchers can be asynchronous, so we have to explicitly check for that and await them.
+            # Otherwise, Python gets upset.
             if prop in self.watchers:
                 for watcher in self.watchers[prop]:
-                    watcher(prop, value)
+                    if asyncio.iscoroutinefunction(watcher):
+                        await watcher(prop, value)
+                    else:
+                        watcher(prop, value)
+
             if '*' in self.watchers:
                 for watcher in self.watchers['*']:
-                    watcher(prop, value)
+                    if asyncio.iscoroutinefunction(watcher):
+                        await watcher(prop, value)
+                    else:
+                        watcher(prop, value)
 
         def on(self, prop, callback):
             if prop not in self.watchers:
