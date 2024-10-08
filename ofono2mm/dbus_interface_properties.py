@@ -29,9 +29,9 @@ class DBusInterfaceProperties:
             # So we'll cut it some slack
             while retries_left > 0:
                 try:
-                    self.props = await self.ofono_proxy[self.interface].call_get_properties()
                     # Watch for property changes to update the internal dict
                     self.ofono_proxy[self.interface].on_property_changed(self._on_property_changed)
+                    self.props = await self.ofono_proxy[self.interface].call_get_properties()
                     return
                 except Exception as e:
                     retries_left -= 1
