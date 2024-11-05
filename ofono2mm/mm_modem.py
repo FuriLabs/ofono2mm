@@ -400,31 +400,32 @@ class MMModemInterface(ServiceInterface):
     def get_mm_modem_simple_interface(self):
         return self.mm_modem_simple_interface
 
+    async def enable_data_if_needed(self):
+        if read_setting('data').strip() == "True":
+            ofono2mm_print("oFono connection dropped while we still need it, reactivating context", self.verbose)
+            while True:
+                if read_setting('data').strip() == 'False':
+                    ofono2mm_print("Data toggle changed to False, no longer need to reactivate context", self.verbose)
+                    return
+
+                # If the modem is not powered, this has a snowflake's chance in hell of working. So give up instead of wasting CPU cycles.
+                if 'Powered' not in self.ofono_props or not self.ofono_props['Powered'].value:
+                    ofono2mm_print("Modem is not powered, giving up on reactivating context", self.verbose)
+                    return
+
+                try:
+                    ret = await self.activate_internet_context()
+                    if ret == True:
+                        # Now set up the APN in NM
+                        await self.mm_modem_simple_interface.network_manager_set_apn()
+                        return
+                except Exception as e:
+                    ofono2mm_print(f"Failed to activate context: {e}", self.verbose)
+                await asyncio.sleep(0.3)
+
     async def context_active_changed(self, property, propvalue):
-        if property == "Active":
-            if read_setting('data').strip() == "True":
-                if not propvalue or propvalue.value == False:
-                    ofono2mm_print("oFono connection dropped while we still need it, reactivating context", self.verbose)
-                    while True:
-                        if read_setting('data').strip() == 'False':
-                            ofono2mm_print("Data toggle changed to False, no longer need to reactivate context", self.verbose)
-                            return
-
-                        # If the modem is not powered, this has a snowflake's chance in hell of working. So give up instead of wasting CPU cycles.
-                        if 'Powered' not in self.ofono_props or not self.ofono_props['Powered'].value:
-                            ofono2mm_print("Modem is not powered, giving up on reactivating context", self.verbose)
-                            return
-
-                        try:
-                            ret = await self.activate_internet_context()
-                            if ret == True:
-                                # Now set up the APN in NM
-                                await self.mm_modem_simple_interface.network_manager_set_apn()
-                                return
-                        except Exception as e:
-                            ofono2mm_print(f"Failed to activate context: {e}", self.verbose)
-                        await asyncio.sleep(0.3)
-
+        if property == "Active" and not propvalue or propvalue.value == False:
+            await self.enable_data_if_needed()
     async def check_ofono_contexts(self):
         ofono2mm_print("Checking ofono contexts", self.verbose)
 
