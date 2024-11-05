@@ -278,6 +278,7 @@ class MMModemInterface(ServiceInterface):
 
         self.ofono_interface_props['org.ofono.SimManager'].on('Present', _on_present_changed)
 
+        self.ofono_interface_props['org.ofono.ConnectionManager'].on('Attached', self.attached_changed)
     async def init_mm_3gpp_interface(self):
         ofono2mm_print("Initialize 3GPP interface", self.verbose)
 
@@ -426,6 +427,13 @@ class MMModemInterface(ServiceInterface):
     async def context_active_changed(self, property, propvalue):
         if property == "Active" and not propvalue or propvalue.value == False:
             await self.enable_data_if_needed()
+
+    async def attached_changed(self, property, value):
+        if value and value.value == True:
+            sender = NotificationSender()
+            sender.send_notification("Attached", "So we try to enable data...")
+            await self.enable_data_if_needed()
+
     async def check_ofono_contexts(self):
         ofono2mm_print("Checking ofono contexts", self.verbose)
 
