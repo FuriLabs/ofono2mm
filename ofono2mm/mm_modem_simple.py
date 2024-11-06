@@ -165,11 +165,6 @@ class MMModemSimpleInterface(ServiceInterface):
 
         self.set_props()
 
-        try:
-            await self.network_manager_set_apn()
-        except Exception as e:
-            ofono2mm_print(f"Failed to set Network Manager APN: {e}", self.verbose)
-
         if 'apn' not in properties:
             ofono2mm_print("User provided no apn, using default value ''", self.verbose)
             apn = ''
@@ -187,10 +182,6 @@ class MMModemSimpleInterface(ServiceInterface):
                     self.mm_modem.bearers[b].active_connect += 1
                     await self.mm_modem.bearers[b].doConnect()
 
-                    if read_setting('data').strip() != 'True':
-                        ofono2mm_print("Saving context toggle state during connection of existing bearers", self.verbose)
-                        save_setting('data', 'True')
-
                     ofono2mm_print(f"Bearer activated at path {b}", self.verbose)
                     return b
         try:
@@ -206,20 +197,12 @@ class MMModemSimpleInterface(ServiceInterface):
             ofono2mm_print(f"Failed to create bearer: {e}", self.verbose)
             bearer = '/org/freedesktop/ModemManager/Bearer/0'
 
-        if read_setting('data').strip() != 'True':
-            ofono2mm_print("Saving context toggle state on bearer creation", self.verbose)
-            save_setting('data', 'True')
-
         ofono2mm_print(f"Bearer activated at path {bearer}", self.verbose)
         return bearer
 
     @method()
     async def Disconnect(self, path: 'o'):
         ofono2mm_print(f"Disconnecting object path {path}", self.verbose)
-
-        if read_setting('data').strip() != 'False':
-            ofono2mm_print("Saving context toggle state", self.verbose)
-            save_setting('data', 'False')
 
         if path == '/':
             for b in self.mm_modem.bearers:
