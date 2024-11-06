@@ -192,38 +192,6 @@ class MMInterface(ServiceInterface):
         mm_modem_simple = mm_modem_interface.get_mm_modem_simple_interface()
         self.loop.create_task(self.simple_set_apn(mm_modem_simple))
 
-        if read_setting('data').strip() == 'True':
-            ofono2mm_print("Activating context on startup", self.verbose)
-
-            try:
-                self.loop.create_task(self.startup_activate_context(mm_modem_simple, mm_modem_interface))
-            except Exception as e:
-                ofono2mm_print(f"Failed to activate context: {e}", self.verbose)
-
-    async def startup_activate_context(self, mm_modem_simple, mm_modem):
-        ofono2mm_print("Activating context on startup", self.verbose)
-
-        while True:
-            if read_setting('data').strip() == 'False':
-                ofono2mm_print("Data toggle changed to False, no longer need to activate on startup", self.verbose)
-                return
-
-            strength = await mm_modem_simple.check_signal_strength()
-
-            if strength == 0:
-                ofono2mm_print("Strength is not available, skipping", self.verbose)
-            elif strength > 0:
-                ofono2mm_print(f"Signal strength is {strength}, activating context now", self.verbose)
-
-                try:
-                    ret = await mm_modem.activate_internet_context()
-                    if ret == True:
-                        return
-                except Exception as e:
-                    ofono2mm_print(f"Failed to activate context: {e}", self.verbose)
-
-            await asyncio.sleep(2)
-
     async def simple_set_apn(self, mm_modem_simple):
         ofono2mm_print("Setting APN in Network Manager", self.verbose)
 
