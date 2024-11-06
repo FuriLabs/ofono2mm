@@ -278,7 +278,6 @@ class MMModemInterface(ServiceInterface):
 
         self.ofono_interface_props['org.ofono.SimManager'].on('Present', _on_present_changed)
 
-        self.ofono_interface_props['org.ofono.ConnectionManager'].on('Attached', self.attached_changed)
     async def init_mm_3gpp_interface(self):
         ofono2mm_print("Initialize 3GPP interface", self.verbose)
 
@@ -401,39 +400,6 @@ class MMModemInterface(ServiceInterface):
     def get_mm_modem_simple_interface(self):
         return self.mm_modem_simple_interface
 
-    async def enable_data_if_needed(self):
-        if read_setting('data').strip() == "True":
-            ofono2mm_print("oFono connection dropped while we still need it, reactivating context", self.verbose)
-            while True:
-                if read_setting('data').strip() == 'False':
-                    ofono2mm_print("Data toggle changed to False, no longer need to reactivate context", self.verbose)
-                    return
-
-                # If the modem is not powered, this has a snowflake's chance in hell of working. So give up instead of wasting CPU cycles.
-                if 'Powered' not in self.ofono_props or not self.ofono_props['Powered'].value:
-                    ofono2mm_print("Modem is not powered, giving up on reactivating context", self.verbose)
-                    return
-
-                try:
-                    ret = await self.activate_internet_context()
-                    if ret == True:
-                        # Now set up the APN in NM
-                        await self.mm_modem_simple_interface.network_manager_set_apn()
-                        return
-                except Exception as e:
-                    ofono2mm_print(f"Failed to activate context: {e}", self.verbose)
-                await asyncio.sleep(0.3)
-
-    async def context_active_changed(self, property, propvalue):
-        if property == "Active" and not propvalue or propvalue.value == False:
-            await self.enable_data_if_needed()
-
-    async def attached_changed(self, property, value):
-        if value and value.value == True:
-            sender = NotificationSender()
-            sender.send_notification("Attached", "So we try to enable data...")
-            await self.enable_data_if_needed()
-
     async def check_ofono_contexts(self):
         ofono2mm_print("Checking ofono contexts", self.verbose)
 
@@ -501,7 +467,6 @@ class MMModemInterface(ServiceInterface):
 
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ctx[0]]["org.ofono.ConnectionContext"]
                 ofono_ctx_interface.on_property_changed(mm_bearer_interface.ofono_context_changed)
-                ofono_ctx_interface.on_property_changed(self.context_active_changed)
                 mm_bearer_interface.ofono_ctx = ctx[0]
 
                 object_path = f'/org/freedesktop/ModemManager/Bearer/{bearer_i}'
@@ -568,7 +533,6 @@ class MMModemInterface(ServiceInterface):
 
             ofono_ctx_interface = self.ofono_client["ofono_context"][path]['org.ofono.ConnectionContext']
             ofono_ctx_interface.on_property_changed(mm_bearer_interface.ofono_context_changed)
-            ofono_ctx_interface.on_property_changed(self.context_active_changed)
             mm_bearer_interface.ofono_ctx = path
 
             object_path = f'/org/freedesktop/ModemManager/Bearer/{bearer_i}'
@@ -598,11 +562,6 @@ class MMModemInterface(ServiceInterface):
                     try:
                         await self.ofono_proxy['org.ofono.Modem'].call_set_property('Online', Variant('b', True))
                         self.was_powered = True
-
-                        # Also enable data if we need
-                        # FIXME: this is a bit of a hack. Calling into context_active_changed is silly, the logic should be
-                        # extracted into a separate function. But, as common wisdom goes, "move fast and break things".
-                        self.loop.create_task(self.context_active_changed("Active", None))
                     except Exception as e:
                         # Might happen in airplane mode although powered should be false. Just coverin' our bases.
                         ofono2mm_print(f"Failed to set Online to True: {e}", self.verbose)
