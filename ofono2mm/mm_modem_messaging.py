@@ -99,7 +99,7 @@ class MMModemMessagingInterface(ServiceInterface):
 
         if 'org.ofono.MessageManager' in self.ofono_interfaces:
             ofono_sms_object_path  = await self.ofono_interfaces['org.ofono.MessageManager'].call_send_message(properties['number'].value, properties['text'].value)
-            print(f"ofono_sms_object_path is {ofono_sms_object_path}")
+            ofono2mm_print(f"ofono_sms_object_path is {ofono_sms_object_path}", self.verbose)
 
         return object_path
 
