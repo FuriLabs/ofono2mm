@@ -222,7 +222,7 @@ class MMModemSimpleInterface(ServiceInterface):
         self.set_props()
         return self.props
 
-    async def network_manager_set_apn(self):
+    async def network_manager_set_apn(self, force=False):
         ofono2mm_print("Generating Network Manager connection", self.verbose)
 
         DBusGMainLoop(set_as_default=True)
@@ -286,11 +286,12 @@ class MMModemSimpleInterface(ServiceInterface):
                 conn = NetworkManager.Settings.AddConnection(connection_settings)
                 ofono2mm_print(f"Connection '{conn.GetSettings()['connection']['id']}' created successfully with timestamp {current_timestamp}.", self.verbose)
 
-            active_connections = NetworkManager.NetworkManager.ActiveConnections
-            for active_conn in active_connections:
-                conn_path = active_conn.Connection.object_path
-                if conn_path == conn.object_path:
-                    return True
+            if not force:
+                active_connections = NetworkManager.NetworkManager.ActiveConnections
+                for active_conn in active_connections:
+                    conn_path = active_conn.Connection.object_path
+                    if conn_path == conn.object_path:
+                        return True
 
             NetworkManager.NetworkManager.ActivateConnection(conn.object_path, "/", "/")
             return True

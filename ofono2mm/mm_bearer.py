@@ -238,10 +238,13 @@ class MMBearerInterface(ServiceInterface):
         ofono2mm_print(f"oFono context changed for prop name {propname} set to value {value}", self.verbose)
 
         if propname == "Active":
-            if self.disconnecting and (not value.value):
+            if self.disconnecting and value.value:
                 self.disconnecting = False
             elif not self.disconnecting and (not value.value) and self.reconnect_task is None and self.props['Connected'].value:
-                self.reconnect_task = asyncio.create_task(self.doConnect())
+                # Initiate a reconnection using NetworkManager.
+                # TODO: ideally NM would take care of this itself once it learns that we lost the connection.
+
+                self.reconnect_task = asyncio.create_task(self.mm_modem.mm_modem_simple_interface.network_manager_set_apn(force=True))
 
             self.props['Connected'] = value
             self.emit_properties_changed({'Connected': value.value})
