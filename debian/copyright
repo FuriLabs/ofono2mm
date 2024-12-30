@@ -2,12 +2,12 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: ofono2mm
 Source: https://github.com/furilabs/oFono2MM
 
-Files: main.py ofono2mm/__init__.py ofono2mm/mm_bearer.py ofono2mm/mm_modem_3gpp.py ofono2mm/mm_modem_messaging.py ofono2mm/mm_modem.py ofono2mm/mm_modem_simple.py ofono2mm/mm_sim.py ofono2mm/mm_sms.py ofono2mm/ofono.py ofono2mm/ofono.py
+Files: main.py ofono2mm/__init__.py ofono2mm/mm_bearer.py ofono2mm/mm_modem_3gpp.py ofono2mm/mm_modem_messaging.py ofono2mm/mm_modem.py ofono2mm/mm_modem_simple.py ofono2mm/mm_sim.py ofono2mm/mm_sms.py ofono2mm/ofono.py
 Copyright: 2023 Erik Inkinen <erik.inkinen@gmail.com>
            2023 Bardia Moshiri <fakeshell@bardia.tech>
 License: BSD-3-clause
 
-Files: Makefile ofono2mm/logging.py ofono2mm/mm_call.py ofono2mm/mm_modem_3gpp_profile_manager.py ofono2mm/mm_modem_3gpp_ussd.py ofono2mm/mm_modem_cdma.py ofono2mm/mm_modem_firmware.py ofono2mm/mm_modem_location.py ofono2mm/mm_modem_oma.py ofono2mm/mm_modem_sar.py ofono2mm/mm_modem_signal.py ofono2mm/mm_modem_time.py ofono2mm/mm_modem_voice.py
+Files: Makefile ofono2mm/logging.py ofono2mm/mm_call.py ofono2mm/mm_modem_3gpp_profile_manager.py ofono2mm/mm_modem_3gpp_ussd.py ofono2mm/mm_modem_cdma.py ofono2mm/mm_modem_firmware.py ofono2mm/mm_modem_location.py ofono2mm/mm_modem_oma.py ofono2mm/mm_modem_sar.py ofono2mm/mm_modem_signal.py ofono2mm/mm_modem_time.py ofono2mm/mm_modem_voice.py ofono2mm/dbus_interface_properties.py
 Copyright: 2024 Bardia Moshiri <fakeshell@bardia.tech>
            2024 Jesús Higueras <jesus@dabbleam.com>
 License: GPL-2.0
