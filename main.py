@@ -266,7 +266,11 @@ async def main():
     loop = asyncio.get_running_loop()
     mm_manager_interface = MMInterface(loop, bus, verbose=verbose)
     bus.export('/org/freedesktop/ModemManager1', mm_manager_interface)
-    await bus.wait_for_disconnect()
+
+    try:
+        await bus.wait_for_disconnect()
+    except:
+        print("System bus disconnected, exiting")
 
 if __name__ == "__main__":
     asyncio.run(main())
