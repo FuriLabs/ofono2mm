@@ -522,6 +522,13 @@
 	    </method>
 	</interface>
 
+	<interface name="org.ofono.FuriLabs.AT">
+		<method name="SendCommand">
+			<arg name="command" type="s" direction="in"/>
+			<arg name="response" type="s" direction="out"/>
+		</method>
+	</interface>
+
 	<node name="context1"/>
 	<node name="context2"/>
 	<node name="context3"/>
