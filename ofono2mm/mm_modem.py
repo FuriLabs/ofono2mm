@@ -81,11 +81,13 @@ class MMModemInterface(ServiceInterface):
             "org.ofono.MessageManager",
             "org.ofono.VoiceCallManager",
             "org.ofono.SupplementaryServices",
+            "org.ofono.FuriLabs.AT",
         }
 
         self.interfaces_without_props = {
             "org.ofono.NetworkTime",
             "org.ofono.NetworkMonitor",
+            "org.ofono.FuriLabs.AT",
         }
 
         self.props = {
@@ -1147,6 +1149,7 @@ class MMModemInterface(ServiceInterface):
 
     @method()
     async def Command(self, cmd: 's', timeout: 'u') -> 's':
+        # TODO: timeout isn't enforced yet
         ofono2mm_print(f"Running command {cmd} with timeout {timeout}", self.verbose)
 
         if cmd == '':
@@ -1155,35 +1158,12 @@ class MMModemInterface(ServiceInterface):
         if cmd[:2] != "AT":
             return ''
 
-        smd_devices = glob('/dev/smd*')
+        data_to_write = f"{cmd}\r\n"
 
-        smd_devices.sort(key=lambda s: [int(text) if text.isdigit() else text.lower() for text in split('([0-9]+)', s)])
-        if smd_devices:
-            device_path = smd_devices[0]
-        else:
+        try:
+            received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(data_to_write)
+        except Exception as e:
             return ''
-
-        data_to_write = f"{cmd}\r"
-
-        with open(device_path, 'w') as device_file:
-            device_file.write(data_to_write)
-
-        with open(device_path, 'r') as device_file:
-            start_time = time()
-            received_data = ""
-            while True:
-                line = device_file.readline()
-                if line:
-                    if time() - start_time > 5:
-                        return ''
-
-                    received_data += line
-                    if "OK" in received_data:
-                        break
-                    if "ERROR" in received_data:
-                        break
-
-                sleep(0.1)
 
         data = received_data.strip()
         data_print = data.replace('\n', ' ')
