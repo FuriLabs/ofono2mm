@@ -31,6 +31,357 @@ from ast import literal_eval
 
 bearer_i = 0
 
+MM_MODEM_BAND_UNKNOWN = 0
+# GSM/UMTS bands
+MM_MODEM_BAND_EGSM    = 1
+MM_MODEM_BAND_DCS     = 2
+MM_MODEM_BAND_PCS     = 3
+MM_MODEM_BAND_G850    = 4
+MM_MODEM_BAND_UTRAN_1 = 5
+MM_MODEM_BAND_UTRAN_3 = 6
+MM_MODEM_BAND_UTRAN_4 = 7
+MM_MODEM_BAND_UTRAN_6 = 8
+MM_MODEM_BAND_UTRAN_5 = 9
+MM_MODEM_BAND_UTRAN_8 = 10
+MM_MODEM_BAND_UTRAN_9 = 11
+MM_MODEM_BAND_UTRAN_2 = 12
+MM_MODEM_BAND_UTRAN_7 = 13
+MM_MODEM_BAND_G450    = 14
+MM_MODEM_BAND_G480    = 15
+MM_MODEM_BAND_G750    = 16
+MM_MODEM_BAND_G380    = 17
+MM_MODEM_BAND_G410    = 18
+MM_MODEM_BAND_G710    = 19
+MM_MODEM_BAND_G810    = 20
+# LTE bands
+MM_MODEM_BAND_EUTRAN_1  = 31
+MM_MODEM_BAND_EUTRAN_2  = 32
+MM_MODEM_BAND_EUTRAN_3  = 33
+MM_MODEM_BAND_EUTRAN_4  = 34
+MM_MODEM_BAND_EUTRAN_5  = 35
+MM_MODEM_BAND_EUTRAN_6  = 36
+MM_MODEM_BAND_EUTRAN_7  = 37
+MM_MODEM_BAND_EUTRAN_8  = 38
+MM_MODEM_BAND_EUTRAN_9  = 39
+MM_MODEM_BAND_EUTRAN_10 = 40
+MM_MODEM_BAND_EUTRAN_11 = 41
+MM_MODEM_BAND_EUTRAN_12 = 42
+MM_MODEM_BAND_EUTRAN_13 = 43
+MM_MODEM_BAND_EUTRAN_14 = 44
+MM_MODEM_BAND_EUTRAN_17 = 47
+MM_MODEM_BAND_EUTRAN_18 = 48
+MM_MODEM_BAND_EUTRAN_19 = 49
+MM_MODEM_BAND_EUTRAN_20 = 50
+MM_MODEM_BAND_EUTRAN_21 = 51
+MM_MODEM_BAND_EUTRAN_22 = 52
+MM_MODEM_BAND_EUTRAN_23 = 53
+MM_MODEM_BAND_EUTRAN_24 = 54
+MM_MODEM_BAND_EUTRAN_25 = 55
+MM_MODEM_BAND_EUTRAN_26 = 56
+MM_MODEM_BAND_EUTRAN_27 = 57
+MM_MODEM_BAND_EUTRAN_28 = 58
+MM_MODEM_BAND_EUTRAN_29 = 59
+MM_MODEM_BAND_EUTRAN_30 = 60
+MM_MODEM_BAND_EUTRAN_31 = 61
+MM_MODEM_BAND_EUTRAN_32 = 62
+MM_MODEM_BAND_EUTRAN_33 = 63
+MM_MODEM_BAND_EUTRAN_34 = 64
+MM_MODEM_BAND_EUTRAN_35 = 65
+MM_MODEM_BAND_EUTRAN_36 = 66
+MM_MODEM_BAND_EUTRAN_37 = 67
+MM_MODEM_BAND_EUTRAN_38 = 68
+MM_MODEM_BAND_EUTRAN_39 = 69
+MM_MODEM_BAND_EUTRAN_40 = 70
+MM_MODEM_BAND_EUTRAN_41 = 71
+MM_MODEM_BAND_EUTRAN_42 = 72
+MM_MODEM_BAND_EUTRAN_43 = 73
+MM_MODEM_BAND_EUTRAN_44 = 74
+MM_MODEM_BAND_EUTRAN_45 = 75
+MM_MODEM_BAND_EUTRAN_46 = 76
+MM_MODEM_BAND_EUTRAN_47 = 77
+MM_MODEM_BAND_EUTRAN_48 = 78
+MM_MODEM_BAND_EUTRAN_49 = 79
+MM_MODEM_BAND_EUTRAN_50 = 80
+MM_MODEM_BAND_EUTRAN_51 = 81
+MM_MODEM_BAND_EUTRAN_52 = 82
+MM_MODEM_BAND_EUTRAN_53 = 83
+MM_MODEM_BAND_EUTRAN_54 = 84
+MM_MODEM_BAND_EUTRAN_55 = 85
+MM_MODEM_BAND_EUTRAN_56 = 86
+MM_MODEM_BAND_EUTRAN_57 = 87
+MM_MODEM_BAND_EUTRAN_58 = 88
+MM_MODEM_BAND_EUTRAN_59 = 89
+MM_MODEM_BAND_EUTRAN_60 = 90
+MM_MODEM_BAND_EUTRAN_61 = 91
+MM_MODEM_BAND_EUTRAN_62 = 92
+MM_MODEM_BAND_EUTRAN_63 = 93
+MM_MODEM_BAND_EUTRAN_64 = 94
+MM_MODEM_BAND_EUTRAN_65 = 95
+MM_MODEM_BAND_EUTRAN_66 = 96
+MM_MODEM_BAND_EUTRAN_67 = 97
+MM_MODEM_BAND_EUTRAN_68 = 98
+MM_MODEM_BAND_EUTRAN_69 = 99
+MM_MODEM_BAND_EUTRAN_70 = 100
+MM_MODEM_BAND_EUTRAN_71 = 101
+MM_MODEM_BAND_EUTRAN_85 = 115
+# CDMA Band Classes (see 3GPP2 C.S0057-C)
+MM_MODEM_BAND_CDMA_BC0  = 128
+MM_MODEM_BAND_CDMA_BC1  = 129
+MM_MODEM_BAND_CDMA_BC2  = 130
+MM_MODEM_BAND_CDMA_BC3  = 131
+MM_MODEM_BAND_CDMA_BC4  = 132
+MM_MODEM_BAND_CDMA_BC5  = 134
+MM_MODEM_BAND_CDMA_BC6  = 135
+MM_MODEM_BAND_CDMA_BC7  = 136
+MM_MODEM_BAND_CDMA_BC8  = 137
+MM_MODEM_BAND_CDMA_BC9  = 138
+MM_MODEM_BAND_CDMA_BC10 = 139
+MM_MODEM_BAND_CDMA_BC11 = 140
+MM_MODEM_BAND_CDMA_BC12 = 141
+MM_MODEM_BAND_CDMA_BC13 = 142
+MM_MODEM_BAND_CDMA_BC14 = 143
+MM_MODEM_BAND_CDMA_BC15 = 144
+MM_MODEM_BAND_CDMA_BC16 = 145
+MM_MODEM_BAND_CDMA_BC17 = 146
+MM_MODEM_BAND_CDMA_BC18 = 147
+MM_MODEM_BAND_CDMA_BC19 = 148
+# Additional UMTS bands
+#  15-18 reserved
+#  23-24 reserved
+#  27-31 reserved
+MM_MODEM_BAND_UTRAN_10 = 210
+MM_MODEM_BAND_UTRAN_11 = 211
+MM_MODEM_BAND_UTRAN_12 = 212
+MM_MODEM_BAND_UTRAN_13 = 213
+MM_MODEM_BAND_UTRAN_14 = 214
+MM_MODEM_BAND_UTRAN_19 = 219
+MM_MODEM_BAND_UTRAN_20 = 220
+MM_MODEM_BAND_UTRAN_21 = 221
+MM_MODEM_BAND_UTRAN_22 = 222
+MM_MODEM_BAND_UTRAN_25 = 225
+MM_MODEM_BAND_UTRAN_26 = 226
+MM_MODEM_BAND_UTRAN_32 = 232
+# All/Any
+MM_MODEM_BAND_ANY = 256
+# NR5G bands
+MM_MODEM_BAND_NGRAN_1 = 301
+MM_MODEM_BAND_NGRAN_2 = 302
+MM_MODEM_BAND_NGRAN_3 = 303
+MM_MODEM_BAND_NGRAN_5 = 305
+MM_MODEM_BAND_NGRAN_7 = 307
+MM_MODEM_BAND_NGRAN_8 = 308
+MM_MODEM_BAND_NGRAN_12 = 312
+MM_MODEM_BAND_NGRAN_13 = 313
+MM_MODEM_BAND_NGRAN_14 = 314
+MM_MODEM_BAND_NGRAN_18 = 318
+MM_MODEM_BAND_NGRAN_20 = 320
+MM_MODEM_BAND_NGRAN_25 = 325
+MM_MODEM_BAND_NGRAN_26 = 326
+MM_MODEM_BAND_NGRAN_28 = 328
+MM_MODEM_BAND_NGRAN_29 = 329
+MM_MODEM_BAND_NGRAN_30 = 330
+MM_MODEM_BAND_NGRAN_34 = 334
+MM_MODEM_BAND_NGRAN_38 = 338
+MM_MODEM_BAND_NGRAN_39 = 339
+MM_MODEM_BAND_NGRAN_40 = 340
+MM_MODEM_BAND_NGRAN_41 = 341
+MM_MODEM_BAND_NGRAN_48 = 348
+MM_MODEM_BAND_NGRAN_50 = 350
+MM_MODEM_BAND_NGRAN_51 = 351
+MM_MODEM_BAND_NGRAN_53 = 353
+MM_MODEM_BAND_NGRAN_65 = 365
+MM_MODEM_BAND_NGRAN_66 = 366
+MM_MODEM_BAND_NGRAN_67 = 367
+MM_MODEM_BAND_NGRAN_70 = 370
+MM_MODEM_BAND_NGRAN_71 = 371
+MM_MODEM_BAND_NGRAN_74 = 374
+MM_MODEM_BAND_NGRAN_75 = 375
+MM_MODEM_BAND_NGRAN_76 = 376
+MM_MODEM_BAND_NGRAN_77 = 377
+MM_MODEM_BAND_NGRAN_78 = 378
+MM_MODEM_BAND_NGRAN_79 = 379
+MM_MODEM_BAND_NGRAN_80 = 380
+MM_MODEM_BAND_NGRAN_81 = 381
+MM_MODEM_BAND_NGRAN_82 = 382
+MM_MODEM_BAND_NGRAN_83 = 383
+MM_MODEM_BAND_NGRAN_84 = 384
+MM_MODEM_BAND_NGRAN_86 = 386
+MM_MODEM_BAND_NGRAN_89 = 389
+MM_MODEM_BAND_NGRAN_90 = 390
+MM_MODEM_BAND_NGRAN_91 = 391
+MM_MODEM_BAND_NGRAN_92 = 392
+MM_MODEM_BAND_NGRAN_93 = 393
+MM_MODEM_BAND_NGRAN_94 = 394
+MM_MODEM_BAND_NGRAN_95 = 395
+MM_MODEM_BAND_NGRAN_257 = 557
+MM_MODEM_BAND_NGRAN_258 = 558
+MM_MODEM_BAND_NGRAN_260 = 560
+MM_MODEM_BAND_NGRAN_261 = 561
+
+_BANDS = [
+    # Enum value              Byte index   Bit index
+    # Bit index starts at 0 from the LSB
+    # 2G
+    [MM_MODEM_BAND_G850,      3,           7],
+    [MM_MODEM_BAND_EGSM,      3,           1],
+    [MM_MODEM_BAND_DCS,       3,           3],
+    [MM_MODEM_BAND_PCS,       3,           4],
+    # 3G 
+    [MM_MODEM_BAND_UTRAN_2,   7,           0],
+    [MM_MODEM_BAND_UTRAN_8,   7,           7],
+    # 4G
+    [MM_MODEM_BAND_EUTRAN_1,  11,          0],
+    [MM_MODEM_BAND_EUTRAN_2,  11,          1],
+    [MM_MODEM_BAND_EUTRAN_3,  11,          2],
+    [MM_MODEM_BAND_EUTRAN_4,  11,          3],
+    [MM_MODEM_BAND_EUTRAN_5,  11,          4],
+    [MM_MODEM_BAND_EUTRAN_6,  11,          5],
+    [MM_MODEM_BAND_EUTRAN_7,  11,          6],
+    [MM_MODEM_BAND_EUTRAN_8,  11,          7],
+    [MM_MODEM_BAND_EUTRAN_9,  10,          0],
+    [MM_MODEM_BAND_EUTRAN_10, 10,          1],
+    [MM_MODEM_BAND_EUTRAN_11, 10,          2],
+    [MM_MODEM_BAND_EUTRAN_12, 10,          3],
+    [MM_MODEM_BAND_EUTRAN_13, 10,          4],
+    [MM_MODEM_BAND_EUTRAN_14, 10,          5],
+
+    # These aren't actually defined by ModemManager, but technically
+    # they do exist. They are not really used in practice, but hey, if
+    # I ever get around to implementing them in the modem, they're here.
+    # [MM_MODEM_BAND_EUTRAN_15, 10,          6],
+    # [MM_MODEM_BAND_EUTRAN_16, 10,          7],
+    [MM_MODEM_BAND_EUTRAN_17, 9,           0],
+    [MM_MODEM_BAND_EUTRAN_18, 9,           1],
+    [MM_MODEM_BAND_EUTRAN_19, 9,           2],
+    [MM_MODEM_BAND_EUTRAN_20, 9,           3],
+    [MM_MODEM_BAND_EUTRAN_21, 9,           4],
+    [MM_MODEM_BAND_EUTRAN_22, 9,           5],
+    [MM_MODEM_BAND_EUTRAN_23, 9,           6],
+    [MM_MODEM_BAND_EUTRAN_24, 9,           7],
+    [MM_MODEM_BAND_EUTRAN_25, 8,           0],
+    [MM_MODEM_BAND_EUTRAN_26, 8,           1],
+    [MM_MODEM_BAND_EUTRAN_27, 8,           2],
+    [MM_MODEM_BAND_EUTRAN_28, 8,           3],
+    [MM_MODEM_BAND_EUTRAN_29, 8,           4],
+    [MM_MODEM_BAND_EUTRAN_30, 8,           5],
+    [MM_MODEM_BAND_EUTRAN_31, 8,           6],
+    [MM_MODEM_BAND_EUTRAN_32, 8,           7],
+    [MM_MODEM_BAND_EUTRAN_33, 15,          0],
+    [MM_MODEM_BAND_EUTRAN_34, 15,          1],
+    [MM_MODEM_BAND_EUTRAN_35, 15,          2],
+    [MM_MODEM_BAND_EUTRAN_36, 15,          3],
+    [MM_MODEM_BAND_EUTRAN_37, 15,          4],
+    [MM_MODEM_BAND_EUTRAN_38, 15,          5],
+    [MM_MODEM_BAND_EUTRAN_39, 15,          6],
+    [MM_MODEM_BAND_EUTRAN_40, 15,          7],
+    [MM_MODEM_BAND_EUTRAN_41, 14,          0],
+    [MM_MODEM_BAND_EUTRAN_42, 14,          1],
+    [MM_MODEM_BAND_EUTRAN_43, 14,          2],
+    [MM_MODEM_BAND_EUTRAN_44, 14,          3],
+    [MM_MODEM_BAND_EUTRAN_45, 14,          4],
+    [MM_MODEM_BAND_EUTRAN_46, 14,          5],
+    [MM_MODEM_BAND_EUTRAN_47, 14,          6],
+    [MM_MODEM_BAND_EUTRAN_48, 14,          7],
+    [MM_MODEM_BAND_EUTRAN_49, 13,          0],
+    [MM_MODEM_BAND_EUTRAN_50, 13,          1],
+    [MM_MODEM_BAND_EUTRAN_51, 13,          2],
+    [MM_MODEM_BAND_EUTRAN_52, 13,          3],
+    [MM_MODEM_BAND_EUTRAN_53, 13,          4],
+    [MM_MODEM_BAND_EUTRAN_54, 13,          5],
+    [MM_MODEM_BAND_EUTRAN_55, 13,          6],
+    [MM_MODEM_BAND_EUTRAN_56, 13,          7],
+    [MM_MODEM_BAND_EUTRAN_57, 12,          0],
+    [MM_MODEM_BAND_EUTRAN_58, 12,          1],
+    [MM_MODEM_BAND_EUTRAN_59, 12,          2],
+    [MM_MODEM_BAND_EUTRAN_60, 12,          3],
+    [MM_MODEM_BAND_EUTRAN_61, 12,          4],
+    [MM_MODEM_BAND_EUTRAN_62, 12,          5],
+    [MM_MODEM_BAND_EUTRAN_63, 12,          6],
+    [MM_MODEM_BAND_EUTRAN_64, 12,          7],
+    [MM_MODEM_BAND_EUTRAN_65, 19,          0],
+    [MM_MODEM_BAND_EUTRAN_66, 19,          1],
+    # 5G
+    [MM_MODEM_BAND_NGRAN_1,   23,          0],
+    [MM_MODEM_BAND_NGRAN_2,   23,          1],
+    [MM_MODEM_BAND_NGRAN_3,   23,          2],
+    # [MM_MODEM_BAND_NGRAN_4,   23,          3],
+    [MM_MODEM_BAND_NGRAN_5,   23,          4],
+    # [MM_MODEM_BAND_NGRAN_6,   23,          5],
+    [MM_MODEM_BAND_NGRAN_7,   23,          6],
+    [MM_MODEM_BAND_NGRAN_8,   23,          7],
+    # [MM_MODEM_BAND_NGRAN_9,   22,          0],
+    # [MM_MODEM_BAND_NGRAN_10,  22,          1],
+    # [MM_MODEM_BAND_NGRAN_11,  22,          2],
+    [MM_MODEM_BAND_NGRAN_12,  22,          3],
+    [MM_MODEM_BAND_NGRAN_13,  22,          4],
+    [MM_MODEM_BAND_NGRAN_14,  22,          5],
+    # [MM_MODEM_BAND_NGRAN_15,  22,          6],
+    # [MM_MODEM_BAND_NGRAN_16,  22,          7],
+    # [MM_MODEM_BAND_NGRAN_17, 21,          0],
+    [MM_MODEM_BAND_NGRAN_18,  21,          1],
+    # [MM_MODEM_BAND_NGRAN_19, 21,          2],
+    [MM_MODEM_BAND_NGRAN_20, 21,          3],
+    # [MM_MODEM_BAND_NGRAN_21, 21,          4],
+    # [MM_MODEM_BAND_NGRAN_22, 21,          5],
+    # [MM_MODEM_BAND_NGRAN_23, 21,          6],
+    # [MM_MODEM_BAND_NGRAN_24, 21,          7],
+    [MM_MODEM_BAND_NGRAN_25, 20,          0],
+    [MM_MODEM_BAND_NGRAN_26, 20,          1],
+    # [MM_MODEM_BAND_NGRAN_27, 20,          2],
+    [MM_MODEM_BAND_NGRAN_28, 20,          3],
+    [MM_MODEM_BAND_NGRAN_29, 20,          4],
+    [MM_MODEM_BAND_NGRAN_30, 20,          5],
+    # [MM_MODEM_BAND_NGRAN_31, 20,          6],
+    # [MM_MODEM_BAND_NGRAN_32, 20,          7],
+    # [MM_MODEM_BAND_NGRAN_33, 27,          0],
+    [MM_MODEM_BAND_NGRAN_34, 27,          1],
+    # [MM_MODEM_BAND_NGRAN_35, 27,          2],
+    # [MM_MODEM_BAND_NGRAN_36, 27,          3],
+    # [MM_MODEM_BAND_NGRAN_37, 27,          4],
+    [MM_MODEM_BAND_NGRAN_38, 27,          5],
+    [MM_MODEM_BAND_NGRAN_39, 27,          6],
+    [MM_MODEM_BAND_NGRAN_40, 27,          7],
+    [MM_MODEM_BAND_NGRAN_41, 26,          0],
+    # [MM_MODEM_BAND_NGRAN_42,  26,          1],
+    # [MM_MODEM_BAND_NGRAN_43,  26,          2],
+    # [MM_MODEM_BAND_NGRAN_44,  26,          3],
+    # [MM_MODEM_BAND_NGRAN_45,  26,          4],
+    # [MM_MODEM_BAND_NGRAN_46,  26,          5],
+    # [MM_MODEM_BAND_NGRAN_47,  26,          6],
+    [MM_MODEM_BAND_NGRAN_48,  26,          7],
+    # [MM_MODEM_BAND_NGRAN_49,  25,          0],
+    [MM_MODEM_BAND_NGRAN_50,  25,          1],
+    [MM_MODEM_BAND_NGRAN_51,  25,          2],
+    # [MM_MODEM_BAND_NGRAN_52,  25,          3],
+    [MM_MODEM_BAND_NGRAN_53,  25,          4],
+    # [MM_MODEM_BAND_NGRAN_54,  25,          5],
+    # [MM_MODEM_BAND_NGRAN_55,  25,          6],
+    # [MM_MODEM_BAND_NGRAN_56,  25,          7],
+    # [MM_MODEM_BAND_NGRAN_57,  24,          0],
+    # [MM_MODEM_BAND_NGRAN_58,  24,          1],
+    # [MM_MODEM_BAND_NGRAN_59,  24,          2],
+    # [MM_MODEM_BAND_NGRAN_60,  24,          3],
+    # [MM_MODEM_BAND_NGRAN_61,  24,          4],
+    # [MM_MODEM_BAND_NGRAN_62,  24,          5],
+    # [MM_MODEM_BAND_NGRAN_63,  24,          6],
+    # [MM_MODEM_BAND_NGRAN_64,  24,          7],
+    [MM_MODEM_BAND_NGRAN_65,  31,          0],
+    [MM_MODEM_BAND_NGRAN_66,  31,          1],
+    [MM_MODEM_BAND_NGRAN_67,  31,          2],
+    # [MM_MODEM_BAND_NGRAN_68,  31,          3],
+    # [MM_MODEM_BAND_NGRAN_69,  31,          4],
+    [MM_MODEM_BAND_NGRAN_70,  31,          5],
+    [MM_MODEM_BAND_NGRAN_71,  31,          6],
+    # [MM_MODEM_BAND_NGRAN_72,  31,          7],
+    # [MM_MODEM_BAND_NGRAN_73,  30,          0],
+    [MM_MODEM_BAND_NGRAN_74,  30,          1],
+    [MM_MODEM_BAND_NGRAN_75,  30,          2],
+    [MM_MODEM_BAND_NGRAN_76,  30,          3],
+    [MM_MODEM_BAND_NGRAN_77,  30,          4],
+    [MM_MODEM_BAND_NGRAN_78,  30,          5],
+    # TODO: there are more bands after this but we don't need them for now
+]
+
 class MMModemInterface(ServiceInterface):
     def __init__(self, loop, index, bus, ofono_client, modem_name, verbose=False):
         super().__init__('org.freedesktop.ModemManager1.Modem')
@@ -1126,9 +1477,53 @@ class MMModemInterface(ServiceInterface):
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', f'The given combination of allowed and preferred modes is not supported')
 
     @method()
-    def SetCurrentBands(self, bands: 'au'):
+    async def SetCurrentBands(self, bands: 'au'):
         ofono2mm_print(f"Setting current bands to {bands}", self.verbose)
-        self.props['CurrentBands'] = Variant('u', bands)
+        band_bytes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        for band_definition in _BANDS:
+            # HACK: The modem firmware absolutely does not like it when you disable
+            # all 2G and 3G bands (but disabling all 4G and 5G is fine), so we'll just
+            # always enable at least one 2G and 3G band.
+            should_enable = band_definition[2] == 7 and band_definition[1] in [3, 7]
+            # Same thing actually applies for 4G and 5G -- if we try to disable every band
+            # it actually will just ignore the command and not disable any bands. So let's
+            # just keep band 1 enabled on 4G and 5G.
+            # 4G band 1:
+            should_enable = should_enable or (band_definition[1] == 11 and band_definition[2] == 0)
+            # 5G band 1:
+            should_enable = should_enable or (band_definition[1] == 23 and band_definition[2] == 0)
+
+            for band in bands:
+                if band == band_definition[0]:
+                    should_enable = True
+                    break
+
+            if should_enable:
+                band_bytes[band_definition[1]] |= 1 << band_definition[2]
+        
+        # Turn the bytes into hex and group them in groups of 4, 4, 12, 12, bytes
+        epbse_command = "AT+EPBSEH="
+
+        epbse_command += "\""
+        for i in range(0, 4):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\",\""
+
+        for i in range(4, 8):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\",\""
+
+        for i in range(8, 20):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\",\""
+
+        for i in range(20, 32):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\""
+
+        await self.send_at_command(epbse_command)
 
     @method()
     def SetPrimarySimSlot(self, sim_slot: 'u'):
@@ -1147,6 +1542,22 @@ class MMModemInterface(ServiceInterface):
 
         return [cell_info]
 
+    async def send_at_command(self, cmd: 's'):
+        data_to_write = f"{cmd}\r\n"
+
+        try:
+            received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(data_to_write)
+        except Exception as e:
+            return ''
+
+        data = received_data.strip()
+        data_print = data.replace('\n', ' ')
+        if data != '':
+            ofono2mm_print(f"Modem returned: {data_print}", self.verbose)
+            return data
+        else:
+            return ''
+
     @method()
     async def Command(self, cmd: 's', timeout: 'u') -> 's':
         # TODO: timeout isn't enforced yet
@@ -1158,10 +1569,12 @@ class MMModemInterface(ServiceInterface):
         if cmd[:2] != "AT":
             return ''
 
-        data_to_write = f"{cmd}\r\n"
-
+        # You may be tempted to replace this with send_at_command, but if you do so,
+        # it will start failing with 'ProxyInterface' object has no attribute 'call_send_command'.
+        # I believe this happens because the method gets bound to the object before the AT interface
+        # is fully initialized, so it doesn't have the call_send_command method yet.
         try:
-            received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(data_to_write)
+            received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(f"{cmd}\r\n")
         except Exception as e:
             return ''
 
@@ -1301,13 +1714,85 @@ class MMModemInterface(ServiceInterface):
     def CurrentModes(self) -> '(uu)':
         return self.props['CurrentModes'].value
 
-    @dbus_property(access=PropertyAccess.READ)
-    def SupportedBands(self) -> 'au':
-        return self.props['SupportedBands'].value
+    def _parse_epbseh(self, epbseh_output):
+        # Output will look like:
+        # +EPBSEH: "0000009a","00000081","080808DF000000A000000002","080800D5000001A000003000"\nOK
+
+        # We only want everything between the first : and the \n
+        # Then we only want to keep the hex bytes and return an array of them like so:
+        # [0, 0, 0, 0x9a, etc]
+        # One thing to keep in mind is that if one of the byte groups doesn't actually need to be represented
+        # as the full thing, it will omit the leading bytes. For example:
+        # We can get either this:
+        # +EPBSEH: "00000080","00000080","080808DF000000A000000002","080800D5000001A000003000","000000050000000000002000"
+        # Or just this:
+        # +EPBSEH: "00000080","00000080","080808DF000000A000000002","080800D5","00000005"
+        # Note that the fourth group is shorter in the second example, because the modem doesn't have
+        # any bands that it needs to represent with the last 3 bytes. So it would be equivalent to:
+        # +EPBSEH: "00000080","00000080","080808DF000000A000000002","080800D50000000000000000","00000005"
+        # Also, the fifth value is completely undocumented and doesn't seem to make any sense, so we'll just ignore it.
+
+        first_colon = epbseh_output.find(':')
+        newline = epbseh_output.find('\n')
+        
+        inner_content = epbseh_output[first_colon + 1:newline].strip()
+        
+        # Split by commas to get individual quoted groups
+        groups = inner_content.split(',')
+        output_bytes = []
+        
+        # Expected lengths for each group in characters (each byte is 2 hex chars)
+        expected_lengths = [8, 8, 24, 24]  # 4 bytes, 4 bytes, 12 bytes, 12 bytes
+        
+        # Process only the first 4 groups (or fewer if not enough groups)
+        for i, group in enumerate(groups[:4]):
+            # Remove quotes and whitespace
+            group = group.strip().strip('"')
+            
+            # Pad with zeros on the right if shorter than expected
+            if i < len(expected_lengths):
+                group = group.ljust(expected_lengths[i], '0')
+            
+            # Parse hex bytes in pairs
+            for j in range(0, len(group), 2):
+                if j+2 <= len(group):
+                    output_bytes.append(int(group[j:j+2], 16))
+        
+        return output_bytes
 
     @dbus_property(access=PropertyAccess.READ)
-    def CurrentBands(self) -> 'au':
-        return self.props['CurrentBands'].value
+    async def SupportedBands(self) -> 'au':
+        try:
+            supported_bands = await self.send_at_command("AT+EPBSEH=?")
+            if supported_bands:
+                supported_bands = self._parse_epbseh(supported_bands)
+                output = []
+
+                for band in _BANDS:
+                    byte = supported_bands[band[1]]
+                    if byte & 1 << band[2]:
+                        output.append(band[0])
+
+                return output
+        except Exception as e:
+            return self.props['SupportedBands'].value
+
+    @dbus_property(access=PropertyAccess.READ)
+    async def CurrentBands(self) -> 'au':
+        try:
+            current_bands = await self.send_at_command("AT+EPBSEH?")
+            if current_bands:
+                current_bands = self._parse_epbseh(current_bands)
+                output = []
+
+                for band in _BANDS:
+                    byte = current_bands[band[1]]
+                    if byte & 1 << band[2]:
+                        output.append(band[0])
+
+                return output
+        except Exception as e:
+            return self.props['CurrentBands'].value
 
     @dbus_property(access=PropertyAccess.READ)
     def SupportedIpFamilies(self) -> 'u':
