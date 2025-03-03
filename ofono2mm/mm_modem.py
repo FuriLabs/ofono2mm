@@ -22,6 +22,7 @@ from ofono2mm.logging import ofono2mm_print
 from ofono2mm.utils import read_setting, save_setting
 from ofono2mm.ofono import Ofono, DBus
 from ofono2mm.dbus_interface_properties import DBusInterfaceProperties
+from ofono2mm.types import _BANDS
 
 import asyncio
 from glob import glob
@@ -197,6 +198,11 @@ class MMModemInterface(ServiceInterface):
             self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface and iface == "org.ofono.NetworkMonitor":
             await self.mm_modem_signal_interface.set_props()
+
+        if iface == "org.ofono.FuriLabs.AT":
+            bands = read_setting("current_bands")
+            if bands and bands.strip():
+                self.loop.create_task(self._send_at_command(bands))
 
     async def remove_ofono_interface(self, iface):
         ofono2mm_print(f"Remove oFono interface for iface {iface}", self.verbose)
@@ -1126,9 +1132,54 @@ class MMModemInterface(ServiceInterface):
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', f'The given combination of allowed and preferred modes is not supported')
 
     @method()
-    def SetCurrentBands(self, bands: 'au'):
+    async def SetCurrentBands(self, bands: 'au'):
         ofono2mm_print(f"Setting current bands to {bands}", self.verbose)
-        self.props['CurrentBands'] = Variant('u', bands)
+        band_bytes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        for band_definition in _BANDS:
+            # HACK: The modem firmware absolutely does not like it when you disable
+            # all 2G and 3G bands (but disabling all 4G and 5G is fine), so we'll just
+            # always enable at least one 2G and 3G band.
+            should_enable = band_definition[2] == 7 and band_definition[1] in [3, 7]
+            # Same thing actually applies for 4G and 5G -- if we try to disable every band
+            # it actually will just ignore the command and not disable any bands. So let's
+            # just keep band 1 enabled on 4G and 5G.
+            # 4G band 1:
+            should_enable = should_enable or (band_definition[1] == 11 and band_definition[2] == 0)
+            # 5G band 1:
+            should_enable = should_enable or (band_definition[1] == 23 and band_definition[2] == 0)
+
+            for band in bands:
+                if band == band_definition[0]:
+                    should_enable = True
+                    break
+
+            if should_enable:
+                band_bytes[band_definition[1]] |= 1 << band_definition[2]
+
+        # Turn the bytes into hex and group them in groups of 4, 4, 12, 12, bytes
+        epbse_command = "AT+EPBSEH="
+
+        epbse_command += "\""
+        for i in range(0, 4):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\",\""
+
+        for i in range(4, 8):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\",\""
+
+        for i in range(8, 20):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\",\""
+
+        for i in range(20, 32):
+            epbse_command += f"{band_bytes[i]:02x}"
+        epbse_command += "\""
+
+        save_setting("current_bands", epbse_command)
+        await self._send_at_command(epbse_command)
 
     @method()
     def SetPrimarySimSlot(self, sim_slot: 'u'):
@@ -1147,6 +1198,23 @@ class MMModemInterface(ServiceInterface):
 
         return [cell_info]
 
+    async def _send_at_command(self, cmd: 's'):
+        data_to_write = f"{cmd}\r\n"
+
+        try:
+            received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(data_to_write)
+        except Exception as e:
+            ofono2mm_print(f"Failed to send AT command {data_to_write.strip()}: {str(e)}", self.verbose)
+            return ''
+
+        data = received_data.strip()
+        data_print = data.replace('\n', ' ')
+        if data != '':
+            ofono2mm_print(f"Modem returned: {data_print}", self.verbose)
+            return data
+        else:
+            return ''
+
     @method()
     async def Command(self, cmd: 's', timeout: 'u') -> 's':
         # TODO: timeout isn't enforced yet
@@ -1158,10 +1226,12 @@ class MMModemInterface(ServiceInterface):
         if cmd[:2] != "AT":
             return ''
 
-        data_to_write = f"{cmd}\r\n"
-
+        # You may be tempted to replace this with send_at_command, but if you do so,
+        # it will start failing with 'ProxyInterface' object has no attribute 'call_send_command'.
+        # I believe this happens because the method gets bound to the object before the AT interface
+        # is fully initialized, so it doesn't have the call_send_command method yet.
         try:
-            received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(data_to_write)
+            received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(f"{cmd}\r\n")
         except Exception as e:
             return ''
 
@@ -1301,12 +1371,85 @@ class MMModemInterface(ServiceInterface):
     def CurrentModes(self) -> '(uu)':
         return self.props['CurrentModes'].value
 
+    def _parse_epbseh(self, epbseh_output):
+        # Output will look like:
+        # +EPBSEH: "0000009a","00000081","080808DF000000A000000002","080800D5000001A000003000"\nOK
+
+        # We only want everything between the first : and the \n
+        # Then we only want to keep the hex bytes and return an array of them like so:
+        # [0, 0, 0, 0x9a, etc]
+        # One thing to keep in mind is that if one of the byte groups doesn't actually need to be represented
+        # as the full thing, it will omit the leading bytes. For example:
+        # We can get either this:
+        # +EPBSEH: "00000080","00000080","080808DF000000A000000002","080800D5000001A000003000","000000050000000000002000"
+        # Or just this:
+        # +EPBSEH: "00000080","00000080","080808DF000000A000000002","080800D5","00000005"
+        # Note that the fourth group is shorter in the second example, because the modem doesn't have
+        # any bands that it needs to represent with the last 3 bytes. So it would be equivalent to:
+        # +EPBSEH: "00000080","00000080","080808DF000000A000000002","080800D50000000000000000","00000005"
+        # Also, the fifth value is completely undocumented and doesn't seem to make any sense, so we'll just ignore it.
+
+        first_colon = epbseh_output.find(':')
+        newline = epbseh_output.find('\n')
+
+        inner_content = epbseh_output[first_colon + 1:newline].strip()
+
+        # Split by commas to get individual quoted groups
+        groups = inner_content.split(',')
+        output_bytes = []
+
+        # Expected lengths for each group in characters (each byte is 2 hex chars)
+        expected_lengths = [8, 8, 24, 24]  # 4 bytes, 4 bytes, 12 bytes, 12 bytes
+
+        # Process only the first 4 groups (or fewer if not enough groups)
+        for i, group in enumerate(groups[:4]):
+            # Remove quotes and whitespace
+            group = group.strip().strip('"')
+
+            # Pad with zeros on the right if shorter than expected
+            if i < len(expected_lengths):
+                group = group.ljust(expected_lengths[i], '0')
+
+            # Parse hex bytes in pairs
+            for j in range(0, len(group), 2):
+                if j+2 <= len(group):
+                    output_bytes.append(int(group[j:j+2], 16))
+        return output_bytes
+
     @dbus_property(access=PropertyAccess.READ)
-    def SupportedBands(self) -> 'au':
+    async def SupportedBands(self) -> 'au':
+        try:
+            supported_bands = await self._send_at_command("AT+EPBSEH=?")
+            if supported_bands:
+                supported_bands = self._parse_epbseh(supported_bands)
+                output = []
+
+                for band in _BANDS:
+                    byte = supported_bands[band[1]]
+                    if byte & 1 << band[2]:
+                        output.append(band[0])
+
+                return output
+        except Exception as e:
+            ofono2mm_print("Failed to get supported bands from AT: {str(e)}, returning dummy list", self.verbose)
         return self.props['SupportedBands'].value
 
     @dbus_property(access=PropertyAccess.READ)
-    def CurrentBands(self) -> 'au':
+    async def CurrentBands(self) -> 'au':
+        try:
+            current_bands = await self._send_at_command("AT+EPBSEH?")
+            if current_bands:
+                current_bands = self._parse_epbseh(current_bands)
+                output = []
+
+                for band in _BANDS:
+                    byte = current_bands[band[1]]
+                    if byte & 1 << band[2]:
+                        output.append(band[0])
+
+                return output
+        except Exception as e:
+            ofono2mm_print("Failed to get current bands from AT: {str(e)}, returning dummy list", self.verbose)
         return self.props['CurrentBands'].value
 
     @dbus_property(access=PropertyAccess.READ)
