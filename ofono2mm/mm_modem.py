@@ -1523,7 +1523,7 @@ class MMModemInterface(ServiceInterface):
             epbse_command += f"{band_bytes[i]:02x}"
         epbse_command += "\""
 
-        await self.send_at_command(epbse_command)
+        await self._send_at_command(epbse_command)
 
     @method()
     def SetPrimarySimSlot(self, sim_slot: 'u'):
@@ -1542,7 +1542,7 @@ class MMModemInterface(ServiceInterface):
 
         return [cell_info]
 
-    async def send_at_command(self, cmd: 's'):
+    async def _send_at_command(self, cmd: 's'):
         data_to_write = f"{cmd}\r\n"
 
         try:
@@ -1763,7 +1763,7 @@ class MMModemInterface(ServiceInterface):
     @dbus_property(access=PropertyAccess.READ)
     async def SupportedBands(self) -> 'au':
         try:
-            supported_bands = await self.send_at_command("AT+EPBSEH=?")
+            supported_bands = await self._send_at_command("AT+EPBSEH=?")
             if supported_bands:
                 supported_bands = self._parse_epbseh(supported_bands)
                 output = []
@@ -1777,10 +1777,12 @@ class MMModemInterface(ServiceInterface):
         except Exception as e:
             return self.props['SupportedBands'].value
 
+        return self.props['SupportedBands'].value
+
     @dbus_property(access=PropertyAccess.READ)
     async def CurrentBands(self) -> 'au':
         try:
-            current_bands = await self.send_at_command("AT+EPBSEH?")
+            current_bands = await self._send_at_command("AT+EPBSEH?")
             if current_bands:
                 current_bands = self._parse_epbseh(current_bands)
                 output = []
@@ -1793,6 +1795,8 @@ class MMModemInterface(ServiceInterface):
                 return output
         except Exception as e:
             return self.props['CurrentBands'].value
+
+        return self.props['CurrentBands'].value
 
     @dbus_property(access=PropertyAccess.READ)
     def SupportedIpFamilies(self) -> 'u':
