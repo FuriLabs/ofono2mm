@@ -549,6 +549,11 @@ class MMModemInterface(ServiceInterface):
         if self.mm_modem_signal_interface and iface == "org.ofono.NetworkMonitor":
             await self.mm_modem_signal_interface.set_props()
 
+        if iface == "org.ofono.FuriLabs.AT":
+            bands = read_setting("current_bands")
+            if bands and bands.strip():
+                self.loop.create_task(self._send_at_command(bands))
+
     async def remove_ofono_interface(self, iface):
         ofono2mm_print(f"Remove oFono interface for iface {iface}", self.verbose)
 
@@ -1523,6 +1528,7 @@ class MMModemInterface(ServiceInterface):
             epbse_command += f"{band_bytes[i]:02x}"
         epbse_command += "\""
 
+        save_setting("current_bands", epbse_command)
         await self._send_at_command(epbse_command)
 
     @method()
