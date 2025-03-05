@@ -200,9 +200,27 @@ class MMModemInterface(ServiceInterface):
             await self.mm_modem_signal_interface.set_props()
 
         if iface == "org.ofono.FuriLabs.AT":
-            bands = read_setting("current_bands")
-            if bands and bands.strip():
-                self.loop.create_task(self._send_at_command(bands))
+            self.loop.create_task(self._restore_saved_bands())
+
+    async def _restore_saved_bands(self):
+        bands = read_setting("current_bands")
+        if not bands or not bands.strip():
+            return
+
+        retries_left = 5
+        while retries_left > 0:
+            try:
+                ofono2mm_print(f"Restoring saved bands: {bands} (attempts left: {retries_left})", self.verbose)
+                await self._send_at_command(bands)
+                # Also restore ERAT to 22
+                await self._send_at_command("AT+ERAT=22")
+                break
+            except Exception as e:
+                ofono2mm_print(f"Failed to restore saved bands: {e}", self.verbose)
+                retries_left -= 1
+                await asyncio.sleep(0.5)
+        
+        ofono2mm_print("Successfully restored saved bands", self.verbose)
 
     async def remove_ofono_interface(self, iface):
         ofono2mm_print(f"Remove oFono interface for iface {iface}", self.verbose)
@@ -1180,6 +1198,9 @@ class MMModemInterface(ServiceInterface):
 
         save_setting("current_bands", epbse_command)
         await self._send_at_command(epbse_command)
+
+        # We also want to set ERAT to 22 to ensure all RATs are enabled
+        await self._send_at_command("AT+ERAT=22")
 
     @method()
     def SetPrimarySimSlot(self, sim_slot: 'u'):
