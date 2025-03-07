@@ -13,7 +13,7 @@ class MMModemFirmwareInterface(ServiceInterface):
         self.verbose = verbose
 
         self.props = {
-            'UpdateSettings': Variant('(ua{sv})', [1, {
+            'UpdateSettings': Variant('(ua{sv})', [0, {
                 'device-ids': Variant('as', ['OFONO-BINDER-PLUGIN']),
                 'version': Variant('s', '')
             }])
@@ -26,7 +26,7 @@ class MMModemFirmwareInterface(ServiceInterface):
 
         self.hardware_revision = self.mm_modem.props.get('HardwareRevision', Variant('s', ''))
         self.props = {
-            'UpdateSettings': Variant('(ua{sv})', [1, {
+            'UpdateSettings': Variant('(ua{sv})', [0, {
                 'device-ids': Variant('as', ['OFONO-BINDER-PLUGIN']),
                 'version': self.hardware_revision
             }])
