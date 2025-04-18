@@ -152,6 +152,9 @@ class MMModem3gppInterface(ServiceInterface):
         ofono2mm_print("Scanning the network", self.verbose)
 
         operators = []
+        if 'org.ofono.NetworkRegistration' not in self.ofono_interfaces:
+            return operators
+
         ofono_operators = await self.ofono_interfaces['org.ofono.NetworkRegistration'].call_scan()
         for ofono_operator in ofono_operators:
             mm_operator = {}
