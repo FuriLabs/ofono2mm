@@ -17,7 +17,7 @@ from ofono2mm.logging import ofono2mm_print
 from typing import Dict
 
 def get_version():
-    return "1.22.0"
+    return "1.24.0"
 
 class MMInterface(ServiceInterface):
     def __init__(self, loop, bus, verbose=False):
