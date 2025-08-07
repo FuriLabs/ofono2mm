@@ -18,6 +18,9 @@ class MMModem3gppInterface(ServiceInterface):
         self.props = {
             'Imei': Variant('s', ''),
             'RegistrationState': Variant('u', 0), # on runtime idle MM_MODEM_3GPP_REGISTRATION_STATE_IDLE
+            'NetworkRejection': Variant('a{sv}', {
+                'error': Variant('u', 0) # hardcoded value none MM_NETWORK_ERROR_NONE
+            }),
             'OperatorCode': Variant('s', ''),
             'OperatorName': Variant('s', ''),
             'EnabledFacilityLocks': Variant('u', 0), # on runtime none MM_MODEM_3GPP_FACILITY_NONE
@@ -218,6 +221,10 @@ class MMModem3gppInterface(ServiceInterface):
     @dbus_property(access=PropertyAccess.READ)
     def RegistrationState(self) -> 'u':
         return self.props['RegistrationState'].value
+
+    @dbus_property(access=PropertyAccess.READ)
+    def NetworkRejection(self) -> 'a{sv}':
+        return self.props['NetworkRejection'].value
 
     @dbus_property(access=PropertyAccess.READ)
     def OperatorCode(self) -> 's':
