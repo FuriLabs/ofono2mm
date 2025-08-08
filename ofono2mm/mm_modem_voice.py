@@ -52,6 +52,8 @@ class MMModemVoiceInterface(ServiceInterface):
         if 'org.ofono.VoiceCallManager' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.VoiceCallManager'].on_call_added(self.add_call)
             self.ofono_interfaces['org.ofono.VoiceCallManager'].on_call_removed(self.remove_call)
+        else:
+            ofono2mm_print("org.ofono.VoiceCallManager was not available when initializing call", self.verbose)
 
     def clean_phone_number(self, number):
         # Remove any *31#, #31#, or similar prefixes
