@@ -27,6 +27,8 @@ class MMModem3gppUssdInterface(ServiceInterface):
             self.ofono_interfaces['org.ofono.SupplementaryServices'].on_notification_received(self.save_notification_received)
             self.ofono_interfaces['org.ofono.SupplementaryServices'].on_request_received(self.save_request_received)
             self.ofono_interfaces['org.ofono.SupplementaryServices'].on_property_changed(self.property_changed)
+        else:
+            ofono2mm_print("org.ofono.SupplementaryServices was not available when initializing ussd", self.verbose)
 
     @method()
     async def Initiate(self, command: 's') -> 's':
@@ -47,7 +49,7 @@ class MMModem3gppUssdInterface(ServiceInterface):
         if self.props['State'].value in (1, 2): # 1: idle, 2: active
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'Cannot respond USSD: no active session')
 
-        # for some reason ofono refuses to respond for 20-30 seconds after it has been initiated
+        # when signal strength is low, ofono might take quite some time to respond
         retries = 10
         for attempt in range(retries):
             try:
@@ -56,7 +58,6 @@ class MMModem3gppUssdInterface(ServiceInterface):
             except Exception as e:
                 ofono2mm_print(f"Attempt {attempt + 1}: Failed to respond: {e}", self.verbose)
                 if str(e) == "Operation already in progress" and attempt < retries - 1:
-                    # there must be a better way...
                     await asyncio.sleep(5)
                 else:
                     return ''
