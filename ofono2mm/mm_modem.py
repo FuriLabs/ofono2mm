@@ -915,7 +915,8 @@ class MMModemInterface(ServiceInterface):
             if self.props[prop].value != old_props[prop].value:
                 changed_props.update({ prop: self.props[prop].value })
 
-        self.emit_properties_changed(changed_props)
+        if changed_props:
+            self.emit_properties_changed(changed_props)
 
     @method()
     async def Enable(self, enable: 'b'):
