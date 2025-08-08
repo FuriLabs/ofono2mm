@@ -127,7 +127,8 @@ class MMModem3gppInterface(ServiceInterface):
             if self.props[prop].value != old_props[prop].value:
                 changed_props.update({ prop: self.props[prop].value })
 
-        self.emit_properties_changed(changed_props)
+        if changed_props:
+            self.emit_properties_changed(changed_props)
 
     @method()
     async def Register(self, operator_id: 's'):
@@ -172,9 +173,13 @@ class MMModem3gppInterface(ServiceInterface):
             if ofono_operator[1]['Status'].value == "forbidden":
                 mm_operator.update({'status': Variant('u', 3)})
 
-            mm_operator.update({'operator-long': ofono_operator[1]['Name']})
-            mm_operator.update({'operator-short': ofono_operator[1]['Name']})
-            mm_operator.update({'operator-code': Variant('s', ofono_operator[1]['MobileCountryCode'].value + ofono_operator[1]['MobileNetworkCode'].value)})
+            name = ofono_operator[1].get('Name', Variant('s', '')).value
+            mcc = ofono_operator[1].get('MobileCountryCode', Variant('s', '')).value
+            mnc = ofono_operator[1].get('MobileNetworkCode', Variant('s', '')).value
+
+            mm_operator['operator-long'] = Variant('s', name)
+            mm_operator['operator-short'] = Variant('s', name)
+            mm_operator['operator-code'] = Variant('s', f"{mcc}{mnc}")
 
             current_tech = 0
             for tech in ofono_operator[1]['Technologies'].value:
