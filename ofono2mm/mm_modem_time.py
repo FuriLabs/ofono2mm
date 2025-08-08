@@ -25,6 +25,8 @@ class MMModemTimeInterface(ServiceInterface):
 
         if 'org.ofono.NetworkTime' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.NetworkTime'].on_network_time_changed(self.update_time)
+        else:
+            ofono2mm_print("org.ofono.NetworkTime was not available when initializing time", self.verbose)
 
     async def update_time(self, time):
         ofono2mm_print(f"Updating time to {time}", self.verbose)
