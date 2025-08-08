@@ -38,6 +38,8 @@ class MMModemMessagingInterface(ServiceInterface):
         if 'org.ofono.MessageManager' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.MessageManager'].on_incoming_message(self.add_incoming_message)
             self.ofono_interfaces['org.ofono.MessageManager'].on_immediate_message(self.add_incoming_message)
+        else:
+            ofono2mm_print("org.ofono.MessageManager was not available when initializing messaging", self.verbose)
 
     def add_incoming_message(self, msg, props):
         ofono2mm_print(f"Add incoming message {msg} with properties {props}", self.verbose)
@@ -73,6 +75,8 @@ class MMModemMessagingInterface(ServiceInterface):
             self.bus.unexport(path)
             self.emit_properties_changed({'Messages': self.props['Messages'].value})
             self.Deleted(path)
+        else:
+            ofono2mm_print(f"{path} is not a valid object path", self.verbose)
 
     @method()
     async def Create(self, properties: 'a{sv}') -> 'o':
@@ -80,6 +84,7 @@ class MMModemMessagingInterface(ServiceInterface):
 
         global message_i
         if 'number' not in properties or 'text' not in properties:
+            ofono2mm_print(f"Properties 'number' or 'text' are not available in properties")
             return
 
         mm_sms_interface = MMSmsInterface(self.verbose)
@@ -98,7 +103,9 @@ class MMModemMessagingInterface(ServiceInterface):
 
         if 'org.ofono.MessageManager' in self.ofono_interfaces:
             ofono_sms_object_path  = await self.ofono_interfaces['org.ofono.MessageManager'].call_send_message(properties['number'].value, properties['text'].value)
-            ofono2mm_print(f"ofono_sms_object_path is {ofono_sms_object_path}", self.verbose)
+            ofono2mm_print(f"Created SMS with object path {ofono_sms_object_path}", self.verbose)
+        else:
+            ofono2mm_print(f"Failed to send message for {properties}. org.ofono.MessageManager is not available", self.verbose)
 
         return object_path
 
