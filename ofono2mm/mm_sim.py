@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from dbus_fast.service import (ServiceInterface,
                                method, dbus_property)
 from dbus_fast.constants import PropertyAccess
@@ -32,7 +34,7 @@ class MMSimInterface(ServiceInterface):
     def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
-        old_props = self.props
+        old_props = deepcopy(self.props)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props:
             if 'Present' in self.ofono_interface_props['org.ofono.SimManager']:

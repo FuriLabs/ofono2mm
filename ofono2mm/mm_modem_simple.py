@@ -2,6 +2,7 @@ import asyncio
 
 from time import time
 from uuid import uuid4
+from copy import deepcopy
 
 import NetworkManager
 
@@ -40,7 +41,7 @@ class MMModemSimpleInterface(ServiceInterface):
     def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
-        old_props = self.props
+        old_props = deepcopy(self.props)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props and 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
             if not self.ofono_interface_props['org.ofono.SimManager']['Present'].value:

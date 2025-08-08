@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from dbus_fast.service import ServiceInterface, method, dbus_property
 from dbus_fast.constants import PropertyAccess
 from dbus_fast import Variant, DBusError
@@ -22,15 +24,14 @@ class MMModemFirmwareInterface(ServiceInterface):
     def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
-        old_props = self.props.copy()
+        old_props = deepcopy(self.props)
 
         self.hardware_revision = self.mm_modem.props.get('HardwareRevision', Variant('s', ''))
-        self.props = {
-            'UpdateSettings': Variant('(ua{sv})', [0, {
-                'device-ids': Variant('as', ['OFONO-BINDER-PLUGIN']),
-                'version': self.hardware_revision
-            }])
-        }
+
+        self.props['UpdateSettings'] = Variant('(ua{sv})', [0, {
+            'device-ids': Variant('as', ['OFONO-BINDER-PLUGIN']),
+            'version': self.hardware_revision
+        }])
 
         for prop in self.props:
             if self.props[prop].value != old_props[prop].value:

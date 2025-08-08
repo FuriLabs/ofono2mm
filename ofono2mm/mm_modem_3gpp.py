@@ -1,5 +1,7 @@
 import asyncio
 
+from copy import deepcopy
+
 from dbus_fast.service import ServiceInterface, method, dbus_property
 from dbus_fast.constants import PropertyAccess
 from dbus_fast import Variant, DBusError
@@ -45,7 +47,7 @@ class MMModem3gppInterface(ServiceInterface):
     async def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
-        old_props = self.props.copy()
+        old_props = deepcopy(self.props)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props and 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
             if not self.ofono_interface_props['org.ofono.SimManager']['Present'].value:

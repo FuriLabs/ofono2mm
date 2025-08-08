@@ -1,5 +1,7 @@
 import asyncio
 
+from copy import deepcopy
+
 from dbus_fast.service import ServiceInterface, method, dbus_property
 from dbus_fast.constants import PropertyAccess
 from dbus_fast import Variant
@@ -96,7 +98,7 @@ class MMBearerInterface(ServiceInterface):
     async def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
-        old_props = self.props
+        old_props = deepcopy(self.props)
 
         if 'org.ofono.ConnectionManager' in self.ofono_interface_props:
             # GetContexts can take a few seconds to come up. If we fail with a DBusError, we'll just wait a bit and try again.
@@ -130,18 +132,19 @@ class MMBearerInterface(ServiceInterface):
                         chosen_username = username
                         chosen_password = password
 
-            self.props['Properties'].value['apn'] = Variant('s', chosen_apn)
-            self.props['Properties'].value['user'] = Variant('s', chosen_username)
-            self.props['Properties'].value['password'] = Variant('s', chosen_password)
+            new_properties = dict(self.props['Properties'].value)
+            new_properties['apn'] = Variant('s', chosen_apn)
+            new_properties['user'] = Variant('s', chosen_username)
+            new_properties['password'] = Variant('s', chosen_password)
 
             if chosen_auth_method == 'none':
-                self.props['Properties'].value['allowed-auth'] = Variant('u', 1) # none MM_BEARER_ALLOWED_AUTH_NONE
+                new_properties['allowed-auth'] = Variant('u', 1) # none MM_BEARER_ALLOWED_AUTH_NONE
             elif chosen_auth_method == 'pap':
-                self.props['Properties'].value['allowed-auth'] = Variant('u', 2) # pap MM_BEARER_ALLOWED_AUTH_PAP
+                new_properties['allowed-auth'] = Variant('u', 2) # pap MM_BEARER_ALLOWED_AUTH_PAP
             elif chosen_auth_method == 'chap':
-                self.props['Properties'].value['allowed-auth'] = Variant('u', 3) # chap MM_BEARER_ALLOWED_AUTH_CHAP
+                new_properties['allowed-auth'] = Variant('u', 3) # chap MM_BEARER_ALLOWED_AUTH_CHAP
             else:
-                self.props['Properties'].value['allowed-auth'] = Variant('u', 0) # unknown MM_BEARER_ALLOWED_AUTH_UNKNOWN
+                new_properties['allowed-auth'] = Variant('u', 0) # unknown MM_BEARER_ALLOWED_AUTH_UNKNOWN
 
             ofono_interface = self.ofono_client["ofono_modem"][self.modem_name]['org.ofono.ConnectionManager']
 
@@ -156,9 +159,11 @@ class MMBearerInterface(ServiceInterface):
                     save_setting('roaming', str(roaming_allowed))
 
                 if roaming_allowed == True:
-                    self.props['Properties'].value['roaming-allowance'] = Variant('u', 2) # roaming partner network MM_BEARER_ROAMING_ALLOWANCE_PARTNER
+                    new_properties['roaming-allowance'] = Variant('u', 2) # roaming partner network MM_BEARER_ROAMING_ALLOWANCE_PARTNER
                 elif roaming_allowed == False:
-                    self.props['Properties'].value['roaming-allowance'] = Variant('u', 0) # roaming none MM_BEARER_ROAMING_ALLOWANCE_NONE
+                    new_properties['roaming-allowance'] = Variant('u', 0) # roaming none MM_BEARER_ROAMING_ALLOWANCE_NONE
+
+            self.props['Properties'] = Variant('a{sv}', new_properties)
 
         for prop in self.props:
             if self.props[prop].value != old_props[prop].value:

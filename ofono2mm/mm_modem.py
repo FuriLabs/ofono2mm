@@ -1,3 +1,11 @@
+import asyncio
+
+from glob import glob
+from time import time, sleep
+from re import split
+from ast import literal_eval
+from copy import deepcopy
+
 from dbus_fast.service import (ServiceInterface,
                                method, dbus_property, signal)
 from dbus_fast.constants import PropertyAccess
@@ -24,12 +32,6 @@ from ofono2mm.utils import read_setting, save_setting
 from ofono2mm.ofono import Ofono, DBus
 from ofono2mm.dbus_interface_properties import DBusInterfaceProperties
 from ofono2mm.types import _BANDS
-
-import asyncio
-from glob import glob
-from time import time, sleep
-from re import split
-from ast import literal_eval
 
 bearer_i = 0
 
@@ -643,7 +645,8 @@ class MMModemInterface(ServiceInterface):
     async def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
-        old_props = self.props.copy()
+        old_props = deepcopy(self.props)
+
         old_state = self.props['State'].value
         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
         if 'Powered' in self.ofono_interface_props['org.ofono.Modem'] and self.ofono_interface_props['org.ofono.Modem']['Powered'].value and 'org.ofono.SimManager' in self.ofono_interface_props and self.enabled:
