@@ -179,8 +179,6 @@ class MMModemInterface(ServiceInterface):
             self.mm_sim_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_modem_voice_interface:
             self.mm_modem_voice_interface.ofono_interface_props = self.ofono_interface_props
-        if self.mm_modem_messaging_interface:
-            self.mm_modem_messaging_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.ofono_interface_props = self.ofono_interface_props
         if self.mm_modem_signal_interface:
@@ -193,8 +191,6 @@ class MMModemInterface(ServiceInterface):
             await self.mm_modem3gpp_interface.set_props()
         if self.mm_sim_interface:
             self.mm_sim_interface.set_props()
-        if self.mm_modem_messaging_interface and iface == "org.ofono.MessageManager":
-            self.mm_modem_messaging_interface.set_props()
         if self.mm_modem_voice_interface and iface == "org.ofono.VoiceCallManager":
             self.mm_modem_voice_interface.set_props()
         if self.mm_modem_simple_interface:
@@ -239,8 +235,6 @@ class MMModemInterface(ServiceInterface):
             self.mm_sim_interface.set_props()
         if self.mm_modem_voice_interface:
             self.mm_modem_voice_interface.set_props()
-        if self.mm_modem_messaging_interface:
-            self.mm_modem_messaging_interface.set_props()
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface:
@@ -271,7 +265,6 @@ class MMModemInterface(ServiceInterface):
             ofono2mm_print("Waiting for oFono message manager to appear", self.verbose)
             if 'org.ofono.MessageManager' in self.ofono_interfaces:
                 ofono2mm_print("oFono message manager appeared, initializing modem messaging interface", self.verbose)
-                self.mm_modem_messaging_interface.set_props()
                 self.mm_modem_messaging_interface.init_messages()
                 await self.set_props()
                 return
@@ -408,7 +401,7 @@ class MMModemInterface(ServiceInterface):
     async def init_mm_messaging_interface(self):
         ofono2mm_print("Initialize Messaging interface", self.verbose)
 
-        self.mm_modem_messaging_interface = MMModemMessagingInterface(self.bus, self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self.verbose)
+        self.mm_modem_messaging_interface = MMModemMessagingInterface(self.bus, self.modem_name, self.ofono_interfaces, self.verbose)
         self.bus.export(f'/org/freedesktop/ModemManager1/Modem/{self.index}', self.mm_modem_messaging_interface)
 
         self.loop.create_task(self.init_message_manager())
@@ -1506,8 +1499,6 @@ class MMModemInterface(ServiceInterface):
             self.mm_sim_interface.ofono_changed(name, varval)
         if self.mm_modem_voice_interface:
             self.mm_modem_voice_interface.ofono_changed(name, varval)
-        if self.mm_modem_messaging_interface:
-            self.mm_modem_messaging_interface.ofono_changed(name, varval)
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.ofono_changed(name, varval)
         if self.mm_modem_signal_interface:
@@ -1527,8 +1518,6 @@ class MMModemInterface(ServiceInterface):
                     self.mm_sim_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_modem_voice_interface:
                     self.mm_modem_voice_interface.ofono_interface_changed(iface)(name, varval)
-                if self.mm_modem_messaging_interface:
-                    self.mm_modem_messaging_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_modem_simple_interface:
                     self.mm_modem_simple_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_modem_signal_interface:

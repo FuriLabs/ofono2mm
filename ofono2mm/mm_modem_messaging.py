@@ -9,28 +9,18 @@ from ofono2mm.logging import ofono2mm_print
 message_i = 1
 
 class MMModemMessagingInterface(ServiceInterface):
-    def __init__(self, bus, modem_name, ofono_interfaces, ofono_interface_props, verbose=False):
+    def __init__(self, bus, modem_name, ofono_interfaces, verbose=False):
         super().__init__('org.freedesktop.ModemManager1.Modem.Messaging')
         self.modem_name = modem_name
         ofono2mm_print("Initializing Messaging interface", verbose)
         self.bus = bus
         self.ofono_interfaces = ofono_interfaces
-        self.ofono_interface_props = ofono_interface_props
         self.verbose = verbose
         self.props = {
             'Messages': Variant('ao', []),
             'SupportedStorages': Variant('au', []),
             'DefaultStorage': Variant('u', 0) # hardcoded value unknown MM_SMS_STORAGE_UNKNOWN
         }
-
-    def set_props(self):
-        ofono2mm_print("Setting properties", self.verbose)
-
-        old_props = self.props
-
-        for prop in self.props:
-            if self.props[prop].value != old_props[prop].value:
-                self.emit_properties_changed({prop: self.props[prop].value})
 
     def init_messages(self):
         ofono2mm_print("Initializing signals", self.verbose)
@@ -130,14 +120,3 @@ class MMModemMessagingInterface(ServiceInterface):
     @dbus_property(access=PropertyAccess.READ)
     def DefaultStorage(self) -> 'u':
         return self.props['DefaultStorage'].value
-
-    def ofono_changed(self, name, varval):
-        self.set_props()
-
-    def ofono_client_changed(self, ofono_client):
-        self.ofono_client = ofono_client
-
-    def ofono_interface_changed(self, iface):
-        def ch(name, varval):
-            self.set_props()
-        return ch
