@@ -539,7 +539,7 @@ class MMModemInterface(ServiceInterface):
 
                 bearer_i += 1
 
-        if self.props['Bearers'].value == old_bearer_list:
+        if self.props['Bearers'].value != old_bearer_list:
             self.emit_properties_changed({'Bearers': self.props['Bearers'].value})
 
         self.ofono_interfaces['org.ofono.ConnectionManager'].on_context_added(self.ofono_context_added)
