@@ -191,8 +191,6 @@ class MMModemInterface(ServiceInterface):
             await self.mm_modem3gpp_interface.set_props()
         if self.mm_sim_interface:
             self.mm_sim_interface.set_props()
-        if self.mm_modem_voice_interface and iface == "org.ofono.VoiceCallManager":
-            self.mm_modem_voice_interface.set_props()
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface and iface == "org.ofono.NetworkMonitor":
@@ -233,8 +231,6 @@ class MMModemInterface(ServiceInterface):
             await self.mm_modem3gpp_interface.set_props()
         if self.mm_sim_interface:
             self.mm_sim_interface.set_props()
-        if self.mm_modem_voice_interface:
-            self.mm_modem_voice_interface.set_props()
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface:
@@ -275,7 +271,6 @@ class MMModemInterface(ServiceInterface):
             ofono2mm_print("Waiting for oFono voice call manager to appear", self.verbose)
             if 'org.ofono.VoiceCallManager' in self.ofono_interfaces:
                 ofono2mm_print("oFono voice call manager appeared, initializing modem voice interface", self.verbose)
-                self.mm_modem_voice_interface.set_props()
                 self.mm_modem_voice_interface.init_calls()
                 await self.set_props()
                 return
@@ -1497,8 +1492,6 @@ class MMModemInterface(ServiceInterface):
             self.mm_modem3gpp_interface.ofono_changed(name, varval)
         if self.mm_sim_interface:
             self.mm_sim_interface.ofono_changed(name, varval)
-        if self.mm_modem_voice_interface:
-            self.mm_modem_voice_interface.ofono_changed(name, varval)
         if self.mm_modem_simple_interface:
             self.mm_modem_simple_interface.ofono_changed(name, varval)
         if self.mm_modem_signal_interface:
@@ -1516,8 +1509,6 @@ class MMModemInterface(ServiceInterface):
                     self.mm_modem3gpp_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_sim_interface:
                     self.mm_sim_interface.ofono_interface_changed(iface)(name, varval)
-                if self.mm_modem_voice_interface:
-                    self.mm_modem_voice_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_modem_simple_interface:
                     self.mm_modem_simple_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_modem_signal_interface:

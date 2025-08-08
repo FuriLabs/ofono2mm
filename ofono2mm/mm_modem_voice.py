@@ -26,14 +26,6 @@ class MMModemVoiceInterface(ServiceInterface):
         }
         self.call_path_map = {}
 
-    def set_props(self):
-        ofono2mm_print("Setting properties", self.verbose)
-
-        old_props = self.props
-        for prop in self.props:
-            if self.props[prop].value != old_props[prop].value:
-                self.emit_properties_changed({prop: self.props[prop].value})
-
     def set_emergency_mode(self):
         if 'org.ofono.SimManager' in self.ofono_interfaces and 'FixedDialing' in self.ofono_interface_props['org.ofono.SimManager']:
             self.props['EmergencyOnly'] = Variant('b', self.ofono_interface_props['org.ofono.SimManager']['FixedDialing'].value)
@@ -250,11 +242,3 @@ class MMModemVoiceInterface(ServiceInterface):
     @dbus_property(access=PropertyAccess.READ)
     def EmergencyOnly(self) -> 'b':
         return self.props['EmergencyOnly'].value
-
-    def ofono_changed(self, name, varval):
-        self.set_props()
-
-    def ofono_interface_changed(self, iface):
-        def ch(name, varval):
-            self.set_props()
-        return ch
