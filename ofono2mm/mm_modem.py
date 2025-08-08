@@ -326,7 +326,7 @@ class MMModemInterface(ServiceInterface):
     async def init_mm_3gpp_ussd_interface(self):
         ofono2mm_print("Initialize 3GPP USSD interface", self.verbose)
 
-        self.mm_modem3gpp_ussd_interface = MMModem3gppUssdInterface(self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self.verbose)
+        self.mm_modem3gpp_ussd_interface = MMModem3gppUssdInterface(self.modem_name, self.ofono_interfaces, self.verbose)
         self.bus.export(f'/org/freedesktop/ModemManager1/Modem/{self.index}', self.mm_modem3gpp_ussd_interface)
 
         self.loop.create_task(self.init_supplementary_services())

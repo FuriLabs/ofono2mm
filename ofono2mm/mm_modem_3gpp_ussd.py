@@ -7,12 +7,11 @@ from dbus_fast import Variant, DBusError
 from ofono2mm.logging import ofono2mm_print
 
 class MMModem3gppUssdInterface(ServiceInterface):
-    def __init__(self, modem_name, ofono_interfaces, ofono_interface_props, verbose=False):
+    def __init__(self, modem_name, ofono_interfaces, verbose=False):
         super().__init__('org.freedesktop.ModemManager1.Modem.Modem3gpp.Ussd')
         self.modem_name = modem_name
         ofono2mm_print("Initializing 3GPP USSD interface", verbose)
         self.ofono_interfaces = ofono_interfaces
-        self.ofono_interface_props = ofono_interface_props
         self.verbose = verbose
         self.props = {
             'State': Variant('u', 0), # on runtime unknown MM_MODEM_3GPP_USSD_SESSION_STATE_UNKNOWN
