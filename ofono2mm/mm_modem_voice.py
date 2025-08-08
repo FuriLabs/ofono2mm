@@ -26,20 +26,27 @@ class MMModemVoiceInterface(ServiceInterface):
         }
         self.call_path_map = {}
 
+
     def set_emergency_mode(self):
-        if 'org.ofono.SimManager' in self.ofono_interfaces and 'FixedDialing' in self.ofono_interface_props['org.ofono.SimManager']:
-            self.props['EmergencyOnly'] = Variant('b', self.ofono_interface_props['org.ofono.SimManager']['FixedDialing'].value)
-        else:
-            self.props['EmergencyOnly'] = Variant('b', False)
+        prev = self.props['EmergencyOnly'].value
+        val = False
+        try:
+            if 'org.ofono.SimManager' in self.ofono_interface_props:
+                sm = self.ofono_interface_props['org.ofono.SimManager']
+                if 'FixedDialing' in sm:
+                    val = bool(sm['FixedDialing'].value)
+        except Exception as e:
+            ofono2mm_print(f"Failed to check emergency state, defaulting to False: {e}", self.verbose)
+            val = False
+
+        if val != prev:
+            self.props['EmergencyOnly'] = Variant('b', val)
+            self.emit_properties_changed({'EmergencyOnly': val})
 
     def init_calls(self):
         ofono2mm_print("Initializing signals", self.verbose)
 
-        try:
-            self.set_emergency_mode()
-        except Exception as e:
-            ofono2mm_print(f"Failed to check for emergency state, marking as false: {e}", self.verbose)
-            self.props['EmergencyOnly'] = Variant('b', False)
+        self.set_emergency_mode()
 
         if 'org.ofono.VoiceCallManager' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.VoiceCallManager'].on_call_added(self.add_call)
@@ -84,7 +91,7 @@ class MMModemVoiceInterface(ServiceInterface):
             mm_call_interface = MMCallInterface(self.ofono_client, self.ofono_interfaces, self.verbose)
             mm_call_interface.props.update({
                 'State': Variant('i', 2),  # ringing out MM_CALL_STATE_RINGING_OUT
-                'StateReason': Variant('i', 0), # outgoing started MM_CALL_STATE_REASON_UNKNOWN
+                'StateReason': Variant('i', 0), # unknown MM_CALL_STATE_REASON_UNKNOWN
                 'Direction': Variant('i', 2), # outgoing MM_CALL_DIRECTION_OUTGOING
                 'Number': Variant('s', props['LineIdentification'].value),
             })
@@ -102,9 +109,9 @@ class MMModemVoiceInterface(ServiceInterface):
             cleaned_number = self.clean_phone_number(props['LineIdentification'].value)
             mm_call_interface = MMCallInterface(self.ofono_client, self.ofono_interfaces, self.verbose)
             mm_call_interface.props.update({
-                'State': Variant('i', 2), # ringing in MM_CALL_STATE_RINGING_OUT
-                'StateReason': Variant('i', 1), # incoming new MM_CALL_STATE_REASON_OUTGOING_STARTED
-                'Direction': Variant('i', 2), # incoming MM_CALL_DIRECTION_INCOMING
+                'State': Variant('i', 2), # ringing out MM_CALL_STATE_RINGING_OUT
+                'StateReason': Variant('i', 1), # outgoing started MM_CALL_STATE_REASON_OUTGOING_STARTED
+                'Direction': Variant('i', 2), # outgoing MM_CALL_DIRECTION_OUTGOING
                 'Number': Variant('s', cleaned_number),
                 'Multiparty': props['Multiparty'],
             })
