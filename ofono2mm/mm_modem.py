@@ -193,8 +193,6 @@ class MMModemInterface(ServiceInterface):
             await self.mm_modem3gpp_interface.set_props()
         if self.mm_sim_interface:
             self.mm_sim_interface.set_props()
-        if self.mm_modem_simple_interface:
-            self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface and iface == "org.ofono.NetworkMonitor":
             await self.mm_modem_signal_interface.set_props()
 
@@ -233,8 +231,6 @@ class MMModemInterface(ServiceInterface):
             await self.mm_modem3gpp_interface.set_props()
         if self.mm_sim_interface:
             self.mm_sim_interface.set_props()
-        if self.mm_modem_simple_interface:
-            self.mm_modem_simple_interface.set_props()
         if self.mm_modem_signal_interface:
             await self.mm_modem_signal_interface.set_props()
 
@@ -339,7 +335,6 @@ class MMModemInterface(ServiceInterface):
 
         self.mm_modem_simple_interface = MMModemSimpleInterface(self, self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self.verbose)
         self.bus.export(f'/org/freedesktop/ModemManager1/Modem/{self.index}', self.mm_modem_simple_interface)
-        self.mm_modem_simple_interface.set_props()
 
     async def init_mm_firmware_interface(self):
         ofono2mm_print("Initialize Firmware interface", self.verbose)
@@ -1496,8 +1491,6 @@ class MMModemInterface(ServiceInterface):
             self.mm_modem3gpp_interface.ofono_changed(name, varval)
         if self.mm_sim_interface:
             self.mm_sim_interface.ofono_changed(name, varval)
-        if self.mm_modem_simple_interface:
-            self.mm_modem_simple_interface.ofono_changed(name, varval)
         if self.mm_modem_signal_interface:
             self.mm_modem_signal_interface.ofono_changed(name, varval)
         for bearer_interface in self.mm_bearer_interfaces:
@@ -1513,8 +1506,6 @@ class MMModemInterface(ServiceInterface):
                     self.mm_modem3gpp_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_sim_interface:
                     self.mm_sim_interface.ofono_interface_changed(iface)(name, varval)
-                if self.mm_modem_simple_interface:
-                    self.mm_modem_simple_interface.ofono_interface_changed(iface)(name, varval)
                 if self.mm_modem_signal_interface:
                     self.mm_modem_signal_interface.ofono_interface_changed(iface)(name, varval)
         return ofono_interface_property_changed

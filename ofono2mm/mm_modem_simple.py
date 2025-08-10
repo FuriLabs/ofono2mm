@@ -2,7 +2,6 @@ import asyncio
 
 from time import time
 from uuid import uuid4
-from copy import deepcopy
 
 import NetworkManager
 
@@ -38,10 +37,8 @@ class MMModemSimpleInterface(ServiceInterface):
              'cdma-nid': Variant('u', 0)
         }
 
-    def set_props(self):
-        ofono2mm_print("Setting properties", self.verbose)
-
-        old_props = deepcopy(self.props)
+    def update_simple_props(self):
+        ofono2mm_print("Updating simple properties", self.verbose)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props and 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
             if not self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
@@ -69,7 +66,9 @@ class MMModemSimpleInterface(ServiceInterface):
             self.props['m3gpp-operator-code'] = Variant('s', f'{MCC}{MNC}')
 
             if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
-                self.props['signal-quality'] = Variant('(ub)', [self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value, True])
+                strength = self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value
+                if self.props['signal-quality'].value[0] != strength:
+                    self.props['signal-quality'] = Variant('(ub)', [strength, True])
 
             if 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
                 if self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'registered' or self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'roaming':
@@ -149,10 +148,6 @@ class MMModemSimpleInterface(ServiceInterface):
 
         self.props['current-bands'] = Variant('au', supported_bands)
 
-        for prop in self.props:
-            if self.props[prop].value != old_props[prop].value:
-                self.emit_properties_changed({prop: self.props[prop].value})
-
     async def check_signal_strength(self):
         ofono2mm_print("Checking network registration", self.verbose)
 
@@ -174,8 +169,6 @@ class MMModemSimpleInterface(ServiceInterface):
     @method()
     async def Connect(self, properties: 'a{sv}') -> 'o':
         ofono2mm_print(f"Connecting with properties {properties}", self.verbose)
-
-        self.set_props()
 
         if 'apn' not in properties:
             ofono2mm_print("User provided no apn, using default value ''", self.verbose)
@@ -231,7 +224,7 @@ class MMModemSimpleInterface(ServiceInterface):
     @method()
     def GetStatus(self) -> 'a{sv}':
         ofono2mm_print("Returning status", self.verbose)
-        self.set_props()
+        self.update_simple_props()
         return self.props
 
     async def network_manager_set_apn(self, force=False):
@@ -370,11 +363,3 @@ class MMModemSimpleInterface(ServiceInterface):
             ofono2mm_print(f"Failed to enable WWAN radio: {e}", self.verbose)
             return False
         return True
-
-    def ofono_changed(self, name, varval):
-        self.set_props()
-
-    def ofono_interface_changed(self, iface):
-        def ch(name, varval):
-            self.set_props()
-        return ch
