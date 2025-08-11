@@ -1228,6 +1228,7 @@ class MMModemInterface(ServiceInterface):
         return [cell_info]
 
     async def _send_at_command(self, cmd: 's'):
+        return
         data_to_write = f"{cmd}\r\n"
 
         try:
