@@ -1,4 +1,0 @@
-/usr/sbin
-/usr/lib/ofono2mm
-/lib/systemd/system/ModemManager.service.d
-/etc/polkit-1/localauthority/10-vendor.d

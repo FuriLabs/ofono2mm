@@ -1,10 +1,36 @@
-main.py /usr/lib/ofono2mm
-ofono2mm /usr/lib/ofono2mm
-dbus/dbus.xml /usr/lib/ofono2mm
-dbus/ofono.xml /usr/lib/ofono2mm
-dbus/ofono_modem.xml /usr/lib/ofono2mm
-dbus/ofono_operator.xml /usr/lib/ofono2mm
-dbus/ofono_context.xml /usr/lib/ofono2mm
-systemd/10-ofono2mm.conf /usr/lib/systemd/system/ModemManager.service.d/
-extra/ofono2mm-radio.pkla /etc/polkit-1/localauthority/10-vendor.d/
-systemd/10-nm-restart.conf /usr/lib/systemd/system/NetworkManager.service.d/
+etc/polkit-1/localauthority/10-vendor.d/ofono2mm-radio.pkla
+usr/lib/ofono2mm/dbus.xml
+usr/lib/ofono2mm/main.py
+usr/lib/ofono2mm/ofono.xml
+usr/lib/ofono2mm/ofono2mm/__init__.py
+usr/lib/ofono2mm/ofono2mm/dbus_interface_properties.py
+usr/lib/ofono2mm/ofono2mm/logging.py
+usr/lib/ofono2mm/ofono2mm/mm_bearer.py
+usr/lib/ofono2mm/ofono2mm/mm_call.py
+usr/lib/ofono2mm/ofono2mm/mm_cbm.py
+usr/lib/ofono2mm/ofono2mm/mm_modem.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_3gpp.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_3gpp_profile_manager.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_3gpp_ussd.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_cdma.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_cell_broadcast.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_firmware.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_location.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_messaging.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_oma.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_sar.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_signal.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_simple.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_time.py
+usr/lib/ofono2mm/ofono2mm/mm_modem_voice.py
+usr/lib/ofono2mm/ofono2mm/mm_sim.py
+usr/lib/ofono2mm/ofono2mm/mm_sms.py
+usr/lib/ofono2mm/ofono2mm/ofono.py
+usr/lib/ofono2mm/ofono2mm/types.py
+usr/lib/ofono2mm/ofono2mm/utils.py
+usr/lib/ofono2mm/ofono_context.xml
+usr/lib/ofono2mm/ofono_modem.xml
+usr/lib/ofono2mm/ofono_operator.xml
+usr/lib/systemd/system/ModemManager.service.d/10-ofono2mm.conf
+usr/lib/systemd/system/NetworkManager.service.d/10-nm-restart.conf
+usr/sbin/ofono2mm
