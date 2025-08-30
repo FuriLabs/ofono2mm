@@ -41,7 +41,7 @@ class MMBearerInterface(ServiceInterface):
             "BearerType": Variant('u', 1),
             "Properties": Variant('a{sv}', {
                 "apn": Variant('s', ''),
-                "ip-type": Variant('u', 1), # hardcoded value ipv4 MM_BEARER_IP_FAMILY_IPV4
+                "ip-type": Variant('u', 4), # hardcoded value ipv4/v6 MM_BEARER_IP_FAMILY_IPV4V6
                 "apn-type": Variant('u', 2), # hardcoded value default internet MM_BEARER_APN_TYPE_DEFAULT
                 "allowed-auth": Variant('u', 0), # on runtime unknown MM_BEARER_ALLOWED_AUTH_UNKNOWN
                 "user": Variant('s', ''),
