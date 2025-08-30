@@ -481,41 +481,73 @@ class MMModemInterface(ServiceInterface):
                 mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self, self.verbose)
                 self.mm_bearer_interfaces.append(mm_bearer_interface)
 
-                ip_method = 0
-                if 'Method' in ctx[1]['Settings'].value:
-                    if ctx[1]['Settings'].value['Method'].value == "static":
-                        ip_method = 2
-                    if ctx[1]['Settings'].value['Method'].value == "dhcp":
-                        ip_method = 3
+                ipv4_method = 0
+                ipv4_address = ''
+                ipv4_dns = []
+                ipv4_gateway = ''
 
-                ip_address = ''
-                if 'Address' in ctx[1]['Settings'].value:
-                    ip_address = ctx[1]['Settings'].value['Address'].value
+                if 'Settings' in ctx[1] and ctx[1]['Settings'].value:
+                    settings = ctx[1]['Settings'].value
+                    if 'Method' in settings:
+                        if settings['Method'].value == "static":
+                            ipv4_method = 2
+                        elif settings['Method'].value == "dhcp":
+                            ipv4_method = 3
 
-                ip_dns = []
-                if 'DomainNameServers' in ctx[1]['Settings'].value:
-                    ip_dns = ctx[1]['Settings'].value['DomainNameServers'].value
+                    if 'Address' in settings:
+                        ipv4_address = settings['Address'].value
 
-                ip_gateway = ''
-                if 'Gateway' in ctx[1]['Settings'].value:
-                    ip_gateway = ctx[1]['Settings'].value['Gateway'].value
+                    if 'DomainNameServers' in settings:
+                        for dns in settings['DomainNameServers'].value:
+                            ipv4_dns.append(dns)
+
+                    if 'Gateway' in settings:
+                        ipv4_gateway = settings['Gateway'].value
+
+                ipv6_method = 0
+                ipv6_address = ''
+                ipv6_dns = []
+                ipv6_gateway = ''
+
+                if 'IPv6.Settings' in ctx[1] and ctx[1]['IPv6.Settings'].value:
+                    ipv6_settings = ctx[1]['IPv6.Settings'].value
+
+                    if 'Address' in ipv6_settings and ipv6_settings['Address'].value:
+                        ipv6_method = 2  # static
+                        ipv6_address = ipv6_settings['Address'].value
+
+                    if 'DomainNameServers' in ipv6_settings:
+                        for dns in ipv6_settings['DomainNameServers'].value:
+                            ipv6_dns.append(dns)
+
+                    if 'Gateway' in ipv6_settings:
+                        ipv6_gateway = ipv6_settings['Gateway'].value
 
                 mm_bearer_interface.props.update({
-                    "Interface": ctx[1]['Settings'].value.get("Interface", Variant('s', '')),
+                    "Interface": ctx[1]['Settings'].value.get("Interface", Variant('s', '')) if 'Settings' in ctx[1] else Variant('s', ''),
                     "Connected": ctx[1]['Active'],
                     "Ip4Config": Variant('a{sv}', {
-                        "method": Variant('u', ip_method),
-                        "dns1": Variant('s', ip_dns[0] if len(ip_dns) > 0 else ''),
-                        "dns2": Variant('s', ip_dns[1] if len(ip_dns) > 1 else ''),
-                        "dns3": Variant('s', ip_dns[2] if len(ip_dns) > 2 else ''),
-                        "gateway": Variant('s', ip_gateway)
+                        "method": Variant('u', ipv4_method),
+                        "address": Variant('s', ipv4_address),
+                        "dns1": Variant('s', ipv4_dns[0] if len(ipv4_dns) > 0 else ''),
+                        "dns2": Variant('s', ipv4_dns[1] if len(ipv4_dns) > 1 else ''),
+                        "dns3": Variant('s', ipv4_dns[2] if len(ipv4_dns) > 2 else ''),
+                        "gateway": Variant('s', ipv4_gateway)
+                    }),
+                    "Ip6Config": Variant('a{sv}', {
+                        "method": Variant('u', ipv6_method),
+                        "address": Variant('s', ipv6_address),
+                        "dns1": Variant('s', ipv6_dns[0] if len(ipv6_dns) > 0 else ''),
+                        "dns2": Variant('s', ipv6_dns[1] if len(ipv6_dns) > 1 else ''),
+                        "dns3": Variant('s', ipv6_dns[2] if len(ipv6_dns) > 2 else ''),
+                        "gateway": Variant('s', ipv6_gateway)
                     }),
                     "Properties": Variant('a{sv}', {
                         "apn": ctx[1]['AccessPointName']
                     })
                 })
 
-                if 'Interface' in ctx[1]['Settings'].value:
+                if 'Settings' in ctx[1] and 'Interface' in ctx[1]['Settings'].value:
                     self.props['Ports'].value.append([ctx[1]['Settings'].value['Interface'].value, 2]) # port type AT MM_MODEM_PORT_TYPE_AT
                     self.emit_properties_changed({'Ports': self.props['Ports'].value})
 
@@ -547,41 +579,73 @@ class MMModemInterface(ServiceInterface):
             mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self, self.verbose)
             self.mm_bearer_interfaces.append(mm_bearer_interface)
 
-            ip_method = 0
-            if 'Method' in properties['Settings'].value:
-                if properties['Settings'].value['Method'].value == "static":
-                    ip_method = 2
-                elif properties['Settings'].value['Method'].value == "dhcp":
-                    ip_method = 3
+            ipv4_method = 0
+            ipv4_address = ''
+            ipv4_dns = []
+            ipv4_gateway = ''
 
-            ip_address = ''
-            if 'Address' in properties['Settings'].value:
-                ip_address = properties['Settings'].value['Address'].value
+            if 'Settings' in properties and properties['Settings'].value:
+                settings = properties['Settings'].value
+                if 'Method' in settings:
+                    if settings['Method'].value == "static":
+                        ipv4_method = 2
+                    elif settings['Method'].value == "dhcp":
+                        ipv4_method = 3
 
-            ip_dns = []
-            if 'DomainNameServers' in properties['Settings'].value:
-                ip_dns = properties['Settings'].value['DomainNameServers'].value
+                if 'Address' in settings:
+                    ipv4_address = settings['Address'].value
 
-            ip_gateway = ''
-            if 'Gateway' in properties['Settings'].value:
-                ip_gateway = properties['Settings'].value['Gateway'].value
+                if 'DomainNameServers' in settings:
+                    for dns in settings['DomainNameServers'].value:
+                        ipv4_dns.append(dns)
+
+                if 'Gateway' in settings:
+                    ipv4_gateway = settings['Gateway'].value
+
+            ipv6_method = 0
+            ipv6_address = ''
+            ipv6_dns = []
+            ipv6_gateway = ''
+
+            if 'IPv6.Settings' in properties and properties['IPv6.Settings'].value:
+                ipv6_settings = properties['IPv6.Settings'].value
+
+                if 'Address' in ipv6_settings and ipv6_settings['Address'].value:
+                    ipv6_method = 2  # static
+                    ipv6_address = ipv6_settings['Address'].value
+
+                if 'DomainNameServers' in ipv6_settings:
+                    for dns in ipv6_settings['DomainNameServers'].value:
+                        ipv6_dns.append(dns)
+
+                if 'Gateway' in ipv6_settings:
+                    ipv6_gateway = ipv6_settings['Gateway'].value
 
             mm_bearer_interface.props.update({
-                "Interface": properties['Settings'].value['Interface'] if 'Interface' in properties['Settings'].value else Variant('s', ''),
+                "Interface": properties['Settings'].value.get('Interface', Variant('s', '')) if 'Settings' in properties else Variant('s', ''),
                 "Connected": properties['Active'],
                 "Ip4Config": Variant('a{sv}', {
-                    "method": Variant('u', ip_method),
-                    "dns1": Variant('s', ip_dns[0] if len(ip_dns) > 0 else ''),
-                    "dns2": Variant('s', ip_dns[1] if len(ip_dns) > 1 else ''),
-                    "dns3": Variant('s', ip_dns[2] if len(ip_dns) > 2 else ''),
-                    "gateway": Variant('s', ip_gateway)
+                    "method": Variant('u', ipv4_method),
+                    "address": Variant('s', ipv4_address),
+                    "dns1": Variant('s', ipv4_dns[0] if len(ipv4_dns) > 0 else ''),
+                    "dns2": Variant('s', ipv4_dns[1] if len(ipv4_dns) > 1 else ''),
+                    "dns3": Variant('s', ipv4_dns[2] if len(ipv4_dns) > 2 else ''),
+                    "gateway": Variant('s', ipv4_gateway)
+                }),
+                "Ip6Config": Variant('a{sv}', {
+                    "method": Variant('u', ipv6_method),
+                    "address": Variant('s', ipv6_address),
+                    "dns1": Variant('s', ipv6_dns[0] if len(ipv6_dns) > 0 else ''),
+                    "dns2": Variant('s', ipv6_dns[1] if len(ipv6_dns) > 1 else ''),
+                    "dns3": Variant('s', ipv6_dns[2] if len(ipv6_dns) > 2 else ''),
+                    "gateway": Variant('s', ipv6_gateway)
                 }),
                 "Properties": Variant('a{sv}', {
                     "apn": properties['AccessPointName']
                 })
             })
 
-            if 'Interface' in properties['Settings'].value:
+            if 'Settings' in properties and 'Interface' in properties['Settings'].value:
                 self.props['Ports'].value.append([properties['Settings'].value['Interface'].value, 2])
                 self.emit_properties_changed({'Ports': self.props['Ports'].value})
 

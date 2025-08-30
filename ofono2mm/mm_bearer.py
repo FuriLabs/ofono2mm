@@ -253,26 +253,68 @@ class MMBearerInterface(ServiceInterface):
             self.props['Connected'] = value
             self.emit_properties_changed({'Connected': value.value})
         elif propname == "Settings":
+            old_props = deepcopy(self.props)
+
             if 'Interface' in value.value:
                 self.props['Interface'] = value.value['Interface']
                 self.emit_properties_changed({'Interface': value.value['Interface'].value})
                 if [value.value['Interface'].value, 2] not in self.mm_modem.props['Ports'].value:
                     self.mm_modem.props['Ports'].value.append([value.value['Interface'].value, 2]) # port type AT MM_MODEM_PORT_TYPE_AT
                     self.mm_modem.emit_properties_changed({'Ports': self.mm_modem.props['Ports'].value})
+
             if 'Method' in value.value:
                 if value.value['Method'].value == 'static':
                     self.props['Ip4Config'].value['method'] = Variant('u', 2) # static MM_BEARER_IP_METHOD_STATIC
                 if value.value['Method'].value == 'dhcp':
                     self.props['Ip4Config'].value['method'] = Variant('u', 3) # dhcp MM_BEARER_IP_METHOD_DHCP
+
             if 'Address' in value.value:
                 self.props['Ip4Config'].value['address'] = value.value['Address']
+
             if 'DomainNameServers' in value.value:
-                for i in range(0, min(3, len(value.value['DomainNameServers'].value))):
-                    self.props['Ip4Config'].value['dns' + str(i + 1)] = Variant('s', value.value['DomainNameServers'].value[i])
+                ipv4_dns = []
+                for dns in value.value['DomainNameServers'].value:
+                    ipv4_dns.append(dns)
+
+                for i in range(0, min(3, len(ipv4_dns))):
+                    self.props['Ip4Config'].value['dns' + str(i + 1)] = Variant('s', ipv4_dns[i])
             if 'Gateway' in value.value:
                 self.props['Ip4Config'].value['gateway'] = value.value['Gateway']
 
-            self.emit_properties_changed({'Ip4Config': self.props['Ip4Config'].value})
+            changed_props = {}
+            for prop in self.props:
+                if self.props[prop].value != old_props[prop].value:
+                    changed_props.update({ prop: self.props[prop].value })
+            if changed_props:
+                self.emit_properties_changed(changed_props)
+        elif propname == "IPv6.Settings":
+            old_props = deepcopy(self.props)
+
+            if 'Method' in value.value:
+                if value.value['Method'].value == 'static':
+                    self.props['Ip6Config'].value['method'] = Variant('u', 2) # static MM_BEARER_IP_METHOD_STATIC
+                if value.value['Method'].value == 'dhcp':
+                    self.props['Ip6Config'].value['method'] = Variant('u', 3) # dhcp MM_BEARER_IP_METHOD_DHCP
+
+            if 'Address' in value.value and value.value['Address'].value:
+                self.props['Ip6Config'].value['address'] = value.value['Address']
+
+            if 'DomainNameServers' in value.value:
+                ipv6_dns = []
+                for dns in value.value['DomainNameServers'].value:
+                    ipv6_dns.append(dns)
+
+                for i in range(0, min(3, len(ipv6_dns))):
+                    self.props['Ip6Config'].value['dns' + str(i + 1)] = Variant('s', ipv6_dns[i])
+            if 'Gateway' in value.value:
+                self.props['Ip6Config'].value['gateway'] = value.value['Gateway']
+
+            changed_props = {}
+            for prop in self.props:
+                if self.props[prop].value != old_props[prop].value:
+                    changed_props.update({ prop: self.props[prop].value })
+            if changed_props:
+                self.emit_properties_changed(changed_props)
 
     def ofono_changed(self, name, varval):
         asyncio.create_task(self.set_props())
