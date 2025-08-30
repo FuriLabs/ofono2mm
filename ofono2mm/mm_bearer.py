@@ -186,7 +186,12 @@ class MMBearerInterface(ServiceInterface):
         ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
         ofono2mm_print(f"Number of active connection requests: {self.active_connect}", self.verbose)
 
+        protocol = read_setting("protocol", "ip").strip()
+        ofono2mm_print(f"Activating bearer with protocol {protocol}", self.verbose)
+
         try:
+            await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', False)), timeout=5.0)
+            await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
             await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', True)), timeout=5.0)
         except Exception as e:
             if "GPRS" in str(e):

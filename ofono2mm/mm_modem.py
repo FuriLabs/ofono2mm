@@ -1047,6 +1047,9 @@ class MMModemInterface(ServiceInterface):
             "Properties": Variant('a{sv}', properties)
         })
 
+        protocol = read_setting("protocol", "ip").strip()
+        ofono2mm_print(f"Creating bearer with protocol {protocol}", self.verbose)
+
         # users would usually have to do
         # set-context-property 0 AccessPointName example.apn && activate-context 1
         # to activate the correct context for ofono2mm to use, lets do it on bearer creation to not need ofono scripts
@@ -1072,7 +1075,7 @@ class MMModemInterface(ServiceInterface):
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
                 await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
                 await ofono_ctx_interface.call_set_property("AccessPointName", Variant('s', chosen_apn))
-                await ofono_ctx_interface.call_set_property("Protocol", Variant('s', 'ip'))
+                await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
                 await ofono_ctx_interface.call_set_property("Active", Variant('b', True))
 
         if not internet_ctx_exists:
@@ -1081,7 +1084,7 @@ class MMModemInterface(ServiceInterface):
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
                 if 'apn' in properties:
                     await ofono_ctx_interface.call_set_property("AccessPointName", properties['apn'])
-                await ofono_ctx_interface.call_set_property("Protocol", Variant('s', 'ip'))
+                await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
                 mm_bearer_interface.ofono_ctx = ofono_ctx
                 await mm_bearer_interface.add_auth_ofono(properties['username'].value if 'username' in properties else '',
                                                          properties['password'].value if 'password' in properties else '')
@@ -1338,6 +1341,22 @@ class MMModemInterface(ServiceInterface):
         else:
             return ''
 
+    @method()
+    def SetProtocol(self, protocol: 'u'):
+        # This is not a standard Modem Manager method. we use this method to manage context protocol (ip/dual)
+        # protocol: 1 -> ip, 2 -> dual. if none specified in the configuration file, default to 1
+        ofono2mm_print(f"Setting protocol to {protocol}", self.verbose)
+
+        if protocol == 1:
+            protocol_str = "ip"
+        elif protocol == 2:
+            protocol_str = "dual"
+        else:
+            protocol_str = "ip"
+            ofono2mm_print(f"Protocol value {protocol} is not valid. It must be in range (1-2). Defaulting to 1", self.verbose)
+
+        save_setting('protocol', protocol_str)
+
     @signal()
     def StateChanged(self, old, new, reason) -> 'iiu':
         return [old, new, reason]
@@ -1550,6 +1569,18 @@ class MMModemInterface(ServiceInterface):
     @dbus_property(access=PropertyAccess.READ)
     def SupportedIpFamilies(self) -> 'u':
         return self.props['SupportedIpFamilies'].value
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Protocol(self) -> 'u':
+        protocol_str = read_setting("protocol", "ip")
+        if protocol_str == "ip":
+            protocol = 1
+        elif protocol_str == "dual":
+            protocol = 2
+        else:
+            ofono2mm_print(f"Protocol string is not dual or ip. Falling back to ip", self.verbose)
+            protocol = 1
+        return protocol
 
     async def ofono_changed(self, name, varval):
         await self.set_props()
