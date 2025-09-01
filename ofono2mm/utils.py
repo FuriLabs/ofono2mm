@@ -59,9 +59,9 @@ def save_setting(key, value):
         for k, v in settings.items():
             file.write(f"{k}: {v}\n")
 
-def read_setting(key):
+def read_setting(key, default=False):
     settings = parse_settings()
-    return str(settings.get(key, False))
+    return str(settings.get(key, default))
 
 def parse_settings():
     settings = {}
