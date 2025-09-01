@@ -1127,6 +1127,8 @@ class MMModemInterface(ServiceInterface):
 
             if path in self.mm_interface_objects:
                 self.mm_interface_objects.remove(path)
+        else:
+            ofono2mm_print(f"Bearer with path {path} does not exist in Bearers property: {self.props['Bearers'].value}", self.verbose)
 
     @method()
     async def Reset(self):
