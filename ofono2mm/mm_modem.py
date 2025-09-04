@@ -479,7 +479,7 @@ class MMModemInterface(ServiceInterface):
         old_bearer_list = self.props['Bearers'].value
         for ctx in contexts:
             if ctx[1]['Type'].value == "internet":
-                mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self, self.verbose)
+                mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self, self.verbose)
                 self.mm_bearer_interfaces.append(mm_bearer_interface)
 
                 ipv4_method = 0
@@ -577,7 +577,7 @@ class MMModemInterface(ServiceInterface):
 
         global bearer_i
         if properties['Type'] == "internet":
-            mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self, self.verbose)
+            mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self, self.verbose)
             self.mm_bearer_interfaces.append(mm_bearer_interface)
 
             ipv4_method = 0
@@ -1042,7 +1042,7 @@ class MMModemInterface(ServiceInterface):
                     return
 
         ofono2mm_print(f"Creating bearer {bearer_i} with properties: {properties}", self.verbose)
-        mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self, self.verbose)
+        mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self, self.verbose)
         self.mm_bearer_interfaces.append(mm_bearer_interface)
         mm_bearer_interface.props.update({
             "Properties": Variant('a{sv}', properties)

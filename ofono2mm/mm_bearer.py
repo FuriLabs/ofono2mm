@@ -10,14 +10,13 @@ from ofono2mm.utils import async_retryable, save_setting, read_setting
 from ofono2mm.logging import ofono2mm_print
 
 class MMBearerInterface(ServiceInterface):
-    def __init__(self, ofono_client, modem_name, ofono_interfaces, ofono_interface_props, mm_modem, verbose=False):
+    def __init__(self, ofono_client, modem_name, ofono_interfaces, mm_modem, verbose=False):
         super().__init__('org.freedesktop.ModemManager1.Bearer')
         self.modem_name = modem_name
         ofono2mm_print("Initializing Bearer interface", verbose)
         self.ofono_client = ofono_client
         self.ofono_proxy = self.ofono_client["ofono_modem"][modem_name]
         self.ofono_interfaces = ofono_interfaces
-        self.ofono_interface_props = ofono_interface_props
         self.mm_modem = mm_modem
         self.verbose = verbose
         self.disconnecting = False
@@ -100,11 +99,12 @@ class MMBearerInterface(ServiceInterface):
 
         old_props = deepcopy(self.props)
 
-        if 'org.ofono.ConnectionManager' in self.ofono_interface_props:
+        if 'org.ofono.ConnectionManager' in self.ofono_interfaces:
             # GetContexts can take a few seconds to come up. If we fail with a DBusError, we'll just wait a bit and try again.
             retries_left = 5
             while retries_left > 0:
                 try:
+                    ofono2mm_print(f"Call get contexts (attempts left: {retries_left})", self.verbose)
                     contexts = await self.ofono_proxy['org.ofono.ConnectionManager'].call_get_contexts()
                     break
                 except Exception as e:
@@ -323,10 +323,3 @@ class MMBearerInterface(ServiceInterface):
 
     def ofono_changed(self, name, varval):
         asyncio.create_task(self.set_props())
-
-    def ofono_interface_changed(self, iface):
-        def ch(name, varval):
-            if iface in self.ofono_interface_props:
-                self.ofono_interface_props[iface][name] = varval
-            asyncio.create_task(self.set_props())
-        return ch
