@@ -1572,7 +1572,7 @@ class MMModemInterface(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def Protocol(self) -> 'u':
-        protocol_str = read_setting("protocol", "ip")
+        protocol_str = read_setting("protocol", "ip").strip()
         if protocol_str == "ip":
             protocol = 1
         elif protocol_str == "dual":
