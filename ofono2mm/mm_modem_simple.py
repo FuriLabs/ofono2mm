@@ -48,29 +48,29 @@ class MMModemSimpleInterface(ServiceInterface):
             ofono2mm_print("SIM manager is not up yet. cannot set simple props", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
             ofono2mm_print("SIM is still locked and/or not ready. cannot set simple props", self.verbose)
             return
 
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
-            self.props['m3gpp-operator-name'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'] else '')
+            self.props['m3gpp-operator-name'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props else '')
 
             MCC = ''
-            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 MCC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileCountryCode'].value
 
             MNC = ''
-            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 MNC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileNetworkCode'].value
 
             self.props['m3gpp-operator-code'] = Variant('s', f'{MCC}{MNC}')
 
-            if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 strength = self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value
                 if self.props['signal-quality'].value[0] != strength:
                     self.props['signal-quality'] = Variant('(ub)', [strength, True])
 
-            if 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 if self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'registered' or self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'roaming':
                     self.props['state'] = Variant('u', 9) # registered MM_MODEM_STATE_REGISTERED
                 elif self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'searching':
@@ -78,7 +78,7 @@ class MMModemSimpleInterface(ServiceInterface):
                 else:
                     self.props['state'] = Variant('u', 7) # enabled MM_MODEM_STATE_ENABLED
 
-            if 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 if self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == "unregistered":
                     self.props['m3gpp-registration-state'] = Variant('u', 0) # idle MM_MODEM_3GPP_REGISTRATION_STATE_IDLE
                 elif self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == "registered":
@@ -100,7 +100,7 @@ class MMModemSimpleInterface(ServiceInterface):
             self.props['state'] = Variant('u', 7) # enabled MM_MODEM_STATE_ENABLED
 
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props and self.props['state'].value >= 7:
-            if "Technology" in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if "Technology" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 current_tech = 0
                 if self.ofono_interface_props['org.ofono.NetworkRegistration']["Technology"].value == "nr":
                     current_tech |= 1 << 15 # network is 5g MM_MODEM_ACCESS_TECHNOLOGY_5GNR
@@ -135,7 +135,7 @@ class MMModemSimpleInterface(ServiceInterface):
         lte_bands = [31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 115]
         nr_bands = [301, 302, 303, 305, 307, 308, 312, 313, 314, 318, 320, 325, 326, 328, 329, 330, 334, 338, 339, 340, 341, 348, 350, 351, 353, 365, 366, 370, 371, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 386, 389, 390, 391, 392, 393, 394, 395, 557, 558, 560, 561]
         if 'org.ofono.RadioSettings' in self.ofono_interface_props:
-            if 'AvailableTechnologies' in self.ofono_interface_props['org.ofono.RadioSettings']:
+            if 'AvailableTechnologies' in self.ofono_interface_props['org.ofono.RadioSettings'].props:
                 ofono_techs = self.ofono_interface_props['org.ofono.RadioSettings']['AvailableTechnologies'].value
                 if 'gsm' in ofono_techs:
                     supported_bands.extend(gsm_bands)
@@ -154,7 +154,7 @@ class MMModemSimpleInterface(ServiceInterface):
         try:
             await self.mm_modem.add_ofono_interface('org.ofono.NetworkRegistration')
             if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
-                if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+                if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                     strength = self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value
                     ofono2mm_print(f"Signal strength is available: {strength}", self.verbose)
                     return strength
@@ -239,7 +239,7 @@ class MMModemSimpleInterface(ServiceInterface):
             await asyncio.sleep(3)
             return False
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
             ofono2mm_print("SIM is still locked and/or not ready", self.verbose)
             await asyncio.sleep(3)
             return False

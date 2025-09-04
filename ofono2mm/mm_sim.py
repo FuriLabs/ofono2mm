@@ -37,7 +37,7 @@ class MMSimInterface(ServiceInterface):
         old_props = deepcopy(self.props)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props:
-            if 'Present' in self.ofono_interface_props['org.ofono.SimManager']:
+            if 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
                 if self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
                     self.props['Active'] = Variant('b', True)
                 else:
@@ -45,22 +45,22 @@ class MMSimInterface(ServiceInterface):
             else:
                 self.props['Active'] = Variant('b', False)
 
-            if 'CardIdentifier' in self.ofono_interface_props['org.ofono.SimManager']:
+            if 'CardIdentifier' in self.ofono_interface_props['org.ofono.SimManager'].props:
                 self.props['SimIdentifier'] = Variant('s', self.ofono_interface_props['org.ofono.SimManager']['CardIdentifier'].value)
             else:
                 self.props['SimIdentifier'] = Variant('s', '')
 
-            if 'SubscriberIdentity' in self.ofono_interface_props['org.ofono.SimManager']:
+            if 'SubscriberIdentity' in self.ofono_interface_props['org.ofono.SimManager'].props:
                 self.props['Imsi'] = Variant('s', self.ofono_interface_props['org.ofono.SimManager']['SubscriberIdentity'].value)
             else:
                 self.props['Imsi'] = Variant('s', '')
 
             MCC = ''
-            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.SimManager']:
+            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.SimManager'].props:
                 MCC = self.ofono_interface_props['org.ofono.SimManager']['MobileCountryCode'].value
 
             MNC = ''
-            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.SimManager']:
+            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.SimManager'].props:
                 MNC = self.ofono_interface_props['org.ofono.SimManager']['MobileNetworkCode'].value
 
             self.props['OperatorIdentifier'] = Variant('s', f"{MCC}{MNC}" if MCC and MNC else "")
@@ -74,14 +74,14 @@ class MMSimInterface(ServiceInterface):
 
         # if sim manager is not available for some info, get it from network registration
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
-            self.props['OperatorName'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'] else '')
+            self.props['OperatorName'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props else '')
 
-            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 MCC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileCountryCode'].value
             else:
                 MCC = ''
 
-            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 MNC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileNetworkCode'].value
             else:
                 MNC = ''
@@ -92,7 +92,7 @@ class MMSimInterface(ServiceInterface):
                 self.props['PreferredNetworks'] = Variant('a(su)', [[f"{MCC}{MNC}", 19]] if MCC and MNC else [])
 
         if 'org.ofono.VoiceCallManager' in self.ofono_interface_props:
-            self.props['EmergencyNumbers'] = Variant('as', self.ofono_interface_props['org.ofono.VoiceCallManager']['EmergencyNumbers'].value if 'EmergencyNumbers' in self.ofono_interface_props['org.ofono.VoiceCallManager'] else [])
+            self.props['EmergencyNumbers'] = Variant('as', self.ofono_interface_props['org.ofono.VoiceCallManager']['EmergencyNumbers'].value if 'EmergencyNumbers' in self.ofono_interface_props['org.ofono.VoiceCallManager'].props else [])
 
         for prop in self.props:
             if self.props[prop].value != old_props[prop].value:

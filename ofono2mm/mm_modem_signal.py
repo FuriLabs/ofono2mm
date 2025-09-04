@@ -55,7 +55,7 @@ class MMModemSignalInterface(ServiceInterface):
             ofono2mm_print("SIM manager is not up yet. cannot set signal props", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
             ofono2mm_print("SIM is still locked and/or not ready. cannot set signal props", self.verbose)
             return
 

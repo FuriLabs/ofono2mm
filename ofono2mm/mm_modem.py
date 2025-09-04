@@ -453,7 +453,7 @@ class MMModemInterface(ServiceInterface):
             ofono2mm_print("SIM manager is not up yet. cannot check ofono contexts", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
             ofono2mm_print("SIM is still locked and/or not ready. cannot check ofono contexts", self.verbose)
             return
 
@@ -709,8 +709,8 @@ class MMModemInterface(ServiceInterface):
 
         old_state = self.props['State'].value
         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
-        if 'Powered' in self.ofono_interface_props['org.ofono.Modem'] and self.ofono_interface_props['org.ofono.Modem']['Powered'].value and 'org.ofono.SimManager' in self.ofono_interface_props and self.enabled:
-            if 'Present' in self.ofono_interface_props['org.ofono.SimManager']:
+        if 'Powered' in self.ofono_interface_props['org.ofono.Modem'].props and self.ofono_interface_props['org.ofono.Modem']['Powered'].value and 'org.ofono.SimManager' in self.ofono_interface_props and self.enabled:
+            if 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
                 if not self.was_powered:
                     # Bring the modem online now that it's powered
                     try:
@@ -723,14 +723,14 @@ class MMModemInterface(ServiceInterface):
                         pass
 
                 if self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
-                    if not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none':
+                    if not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none':
                         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
                         if self.ofono_interface_props['org.ofono.Modem']['Online'].value:
                             if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
-                                if ("Status" in self.ofono_interface_props['org.ofono.NetworkRegistration']):
+                                if ("Status" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props):
                                     if self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'registered' or self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'roaming':
                                         self.props['State'] = Variant('i', 8) # modem is registered MM_MODEM_STATE_REGISTERED
-                                        if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+                                        if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                                             self.props['SignalQuality'] = Variant('(ub)', [self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value, True])
                                     elif self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == 'searching':
                                         self.props['State'] = Variant('i', 7) # modem is searching MM_MODEM_STATE_SEARCHING
@@ -771,9 +771,9 @@ class MMModemInterface(ServiceInterface):
             self.props['PowerState'] = Variant('i', 1) # power is off MM_MODEM_POWER_STATE_OFF
 
         if 'org.ofono.SimManager' in self.ofono_interface_props:
-            self.props['OwnNumbers'] = Variant('as', self.ofono_interface_props['org.ofono.SimManager']['SubscriberNumbers'].value if 'SubscriberNumbers' in self.ofono_interface_props['org.ofono.SimManager'] else [])
+            self.props['OwnNumbers'] = Variant('as', self.ofono_interface_props['org.ofono.SimManager']['SubscriberNumbers'].value if 'SubscriberNumbers' in self.ofono_interface_props['org.ofono.SimManager'].props else [])
 
-            if 'Retries' in self.ofono_interface_props['org.ofono.SimManager']:
+            if 'Retries' in self.ofono_interface_props['org.ofono.SimManager'].props:
                 unlock_retries = {}
                 if 'pin' in self.ofono_interface_props['org.ofono.SimManager']['Retries'].value:
                     unlock_retries[2] = self.ofono_interface_props['org.ofono.SimManager']['Retries'].value['pin'] # MM_MODEM_LOCK_SIM_PIN
@@ -868,7 +868,7 @@ class MMModemInterface(ServiceInterface):
         lte_bands = [31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 115]
         nr_bands = [301, 302, 303, 305, 307, 308, 312, 313, 314, 318, 320, 325, 326, 328, 329, 330, 334, 338, 339, 340, 341, 348, 350, 351, 353, 365, 366, 370, 371, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 386, 389, 390, 391, 392, 393, 394, 395, 557, 558, 560, 561]
         if 'org.ofono.RadioSettings' in self.ofono_interface_props:
-            if 'AvailableTechnologies' in self.ofono_interface_props['org.ofono.RadioSettings']:
+            if 'AvailableTechnologies' in self.ofono_interface_props['org.ofono.RadioSettings'].props:
                 ofono_techs = self.ofono_interface_props['org.ofono.RadioSettings']['AvailableTechnologies'].value
                 if 'gsm' in ofono_techs:
                     caps |= 4
@@ -887,7 +887,7 @@ class MMModemInterface(ServiceInterface):
                     modes |= 16
                     supported_bands.extend(nr_bands)
 
-            if 'TechnologyPreference' in self.ofono_interface_props['org.ofono.RadioSettings']:
+            if 'TechnologyPreference' in self.ofono_interface_props['org.ofono.RadioSettings'].props:
                 ofono_pref =  self.ofono_interface_props['org.ofono.RadioSettings']['TechnologyPreference'].value
                 if ofono_pref == 'nr':
                     pref = 16 # current mode nr MM_MODEM_MODE_5G
@@ -961,11 +961,11 @@ class MMModemInterface(ServiceInterface):
             self.props['SupportedModes'] = Variant('a(uu)', [[0, 0]]) # allowed mode none, preferred mode none MM_MODEM_MODE_NONE
             self.props['CurrentModes'] = Variant('(uu)', [0, 0]) # allowed mode none, preferred mode none MM_MODEM_MODE_NONE
 
-        self.props['EquipmentIdentifier'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Serial'].value if 'Serial' in self.ofono_interface_props['org.ofono.Modem'] else '')
-        self.props['HardwareRevision'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Revision'].value if 'Revision' in self.ofono_interface_props['org.ofono.Modem'] else '')
-        self.props['Revision'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['SoftwareVersionNumber'].value if 'SoftwareVersionNumber' in self.ofono_interface_props['org.ofono.Modem'] else '')
-        self.props['Manufacturer'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Manufacturer'].value if 'Manufacturer' in self.ofono_interface_props['org.ofono.Modem'] else 'ofono')
-        self.props['Model'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Model'].value if 'Model' in self.ofono_interface_props['org.ofono.Modem'] else 'binder')
+        self.props['EquipmentIdentifier'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Serial'].value if 'Serial' in self.ofono_interface_props['org.ofono.Modem'].props else '')
+        self.props['HardwareRevision'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Revision'].value if 'Revision' in self.ofono_interface_props['org.ofono.Modem'].props else '')
+        self.props['Revision'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['SoftwareVersionNumber'].value if 'SoftwareVersionNumber' in self.ofono_interface_props['org.ofono.Modem'].props else '')
+        self.props['Manufacturer'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Manufacturer'].value if 'Manufacturer' in self.ofono_interface_props['org.ofono.Modem'].props else 'ofono')
+        self.props['Model'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Model'].value if 'Model' in self.ofono_interface_props['org.ofono.Modem'].props else 'binder')
 
         if old_state != self.props['State'].value:
             self.StateChanged(old_state, self.props['State'].value, 0)

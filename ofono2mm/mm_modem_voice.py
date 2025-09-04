@@ -31,7 +31,7 @@ class MMModemVoiceInterface(ServiceInterface):
         val = False
         try:
             if 'org.ofono.SimManager' in self.ofono_interface_props:
-                sm = self.ofono_interface_props['org.ofono.SimManager']
+                sm = self.ofono_interface_props['org.ofono.SimManager'].props
                 if 'FixedDialing' in sm:
                     val = bool(sm['FixedDialing'].value)
         except Exception as e:
@@ -161,10 +161,7 @@ class MMModemVoiceInterface(ServiceInterface):
             self.emit_properties_changed({'Calls': self.props['Calls'].value})
             self.CallDeleted(path)
 
-            if 'org.ofono.SimManager' in self.ofono_interfaces and 'FixedDialing' in self.ofono_interface_props['org.ofono.SimManager']:
-                self.props['EmergencyOnly'] = Variant('b', self.ofono_interface_props['org.ofono.SimManager']['FixedDialing'].value)
-            else:
-                self.props['EmergencyOnly'] = Variant('b', False)
+        self.set_emergency_mode()
 
     @method()
     async def CreateCall(self, properties: 'a{sv}') -> 'o':

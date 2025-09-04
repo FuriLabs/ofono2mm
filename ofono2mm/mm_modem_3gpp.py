@@ -57,23 +57,23 @@ class MMModem3gppInterface(ServiceInterface):
             ofono2mm_print("SIM manager is not up yet. cannot set 3gpp props", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'] or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
             ofono2mm_print("SIM is still locked and/or not ready. cannot set 3gpp props", self.verbose)
             return
 
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
-            self.props['OperatorName'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'] else '')
+            self.props['OperatorName'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props else '')
 
             MCC = ''
-            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 MCC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileCountryCode'].value
 
             MNC = ''
-            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 MNC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileNetworkCode'].value
 
             self.props['OperatorCode'] = Variant('s', f'{MCC}{MNC}')
-            if 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 if self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == "unregistered":
                     self.props['RegistrationState'] = Variant('u', 0) # idle MM_MODEM_3GPP_REGISTRATION_STATE_IDLE
                     self.props['PacketServiceState'] = Variant('u', 1) # detached MM_MODEM_3GPP_PACKET_SERVICE_STATE_DETACHED
@@ -99,7 +99,7 @@ class MMModem3gppInterface(ServiceInterface):
             self.props['OperatorCode'] = Variant('s', '')
             self.props['RegistrationState'] = Variant('u', 4) # unknown MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN
 
-        self.props['Imei'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Serial'].value if 'Serial' in self.ofono_interface_props['org.ofono.Modem'] else '')
+        self.props['Imei'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Serial'].value if 'Serial' in self.ofono_interface_props['org.ofono.Modem'].props else '')
         self.props['EnabledFacilityLocks'] = Variant('u', 0) # none MM_MODEM_3GPP_FACILITY_NONE
 
         try:
@@ -134,7 +134,7 @@ class MMModem3gppInterface(ServiceInterface):
     async def Register(self, operator_id: 's'):
         ofono2mm_print(f"Register with operator id '{operator_id}'", self.verbose)
 
-        if 'org.ofono.NetworkRegistration' in self.ofono_interface_props and 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+        if 'org.ofono.NetworkRegistration' in self.ofono_interface_props and 'Status' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
             if self.ofono_interface_props['org.ofono.NetworkRegistration']['Status'].value == "unknown":
                 raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'Device not yet enabled')
         else:
