@@ -26,7 +26,6 @@ class MMModemVoiceInterface(ServiceInterface):
         }
         self.call_path_map = {}
 
-
     def set_emergency_mode(self):
         prev = self.props['EmergencyOnly'].value
         val = False
@@ -224,13 +223,22 @@ class MMModemVoiceInterface(ServiceInterface):
         await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_transfer()
 
     @method()
-    def CallWaitingSetup(self, enable: 'b'):
+    async def CallWaitingSetup(self, enable: 'b'):
         ofono2mm_print(f"Activate call waiting network: {enable}", self.verbose)
+        status = 'enabled' if enable else 'disabled'
+        await self.ofono_interfaces['org.ofono.CallSettings'].call_set_property('VoiceCallWaiting', Variant('s', status))
 
     @method()
     def CallWaitingQuery(self) -> 'b':
         ofono2mm_print("Query the status of call waiting network", self.verbose)
-        return True
+
+        status = self.ofono_interface_props['org.ofono.CallSettings']['VoiceCallWaiting'].value
+        ofono2mm_print(f"Call waiting is {status}", self.verbose)
+
+        enabled = False
+        if status == "enabled":
+            enabled = True
+        return enabled
 
     @signal()
     def CallAdded(self, path) -> 'o':
