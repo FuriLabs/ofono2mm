@@ -88,6 +88,7 @@ class MMModemInterface(ServiceInterface):
             "org.ofono.SupplementaryServices",
             "org.ofono.FuriLabs.AT",
             "org.ofono.CellBroadcast",
+            "org.ofono.CallSettings",
         }
 
         self.interfaces_without_props = {
