@@ -226,15 +226,18 @@ class MMModemVoiceInterface(ServiceInterface):
         await self.ofono_interfaces['org.ofono.CallSettings'].call_set_property('VoiceCallWaiting', Variant('s', status))
 
     @method()
-    def CallWaitingQuery(self) -> 'b':
+    async def CallWaitingQuery(self) -> 'b':
         ofono2mm_print("Query the status of call waiting network", self.verbose)
 
-        status = self.ofono_interface_props['org.ofono.CallSettings']['VoiceCallWaiting'].value
-        ofono2mm_print(f"Call waiting is {status}", self.verbose)
-
         enabled = False
-        if status == "enabled":
-            enabled = True
+        props = await self.ofono_interfaces['org.ofono.CallSettings'].call_get_properties()
+        if 'VoiceCallWaiting' in props:
+            status = props['VoiceCallWaiting'].value
+            ofono2mm_print(f"Call waiting is {status}", self.verbose)
+            if status == "enabled":
+                enabled = True
+        else:
+            ofono2mm_print(f"VoiceCallWaiting is not available in org.ofono.CallSettings properties: {props}", self.verbose)
         return enabled
 
     @signal()

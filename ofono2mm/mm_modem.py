@@ -95,6 +95,7 @@ class MMModemInterface(ServiceInterface):
             "org.ofono.NetworkTime",
             "org.ofono.NetworkMonitor",
             "org.ofono.FuriLabs.AT",
+            "org.ofono.CallSettings",
         }
 
         self.props = {
