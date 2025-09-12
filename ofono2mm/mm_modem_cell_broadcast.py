@@ -1,5 +1,3 @@
-import asyncio
-
 from dbus_fast.service import ServiceInterface, method, dbus_property, signal
 from dbus_fast.constants import PropertyAccess
 from dbus_fast import Variant
