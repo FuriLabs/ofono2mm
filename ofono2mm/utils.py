@@ -24,7 +24,7 @@ def async_retryable(times=0):
                     while times == 0 or current_try < times:
                             try:
                                     result = await func(*args, **kwargs)
-                            except Exception as e:
+                            except Exception:
                                     if current_try == times-1:
                                             raise
 
@@ -55,7 +55,7 @@ def save_setting(key, value):
 
     settings[key] = value
 
-    with open(settings_file, 'w') as file:
+    with open(settings_file, 'w', encoding='utf-8') as file:
         for k, v in settings.items():
             file.write(f"{k}: {v}\n")
 
@@ -66,7 +66,7 @@ def read_setting(key, default=False):
 def parse_settings():
     settings = {}
     if exists(settings_file):
-        with open(settings_file, 'r') as file:
+        with open(settings_file, 'r', encoding='utf-8') as file:
             for line in file:
                 if ':' in line:
                     k, v = line.strip().split(':', 1)
