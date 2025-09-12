@@ -1,5 +1,4 @@
 import multiprocessing
-from functools import partial
 from datetime import datetime
 from os import seteuid, getuid, chown, makedirs
 from os.path import join
@@ -7,7 +6,7 @@ import asyncio
 
 import gi
 gi.require_version('Geoclue', '2.0')
-from gi.repository import Gio, GLib, GObject, Geoclue
+from gi.repository import GLib, Geoclue
 
 from dbus_fast.service import ServiceInterface, method, dbus_property
 from dbus_fast.constants import PropertyAccess
@@ -20,7 +19,7 @@ main_loop = None
 location_data = None
 verbose = False
 
-def on_simple_ready(source_object, result, user_data):
+def on_simple_ready(_source_object, result, _user_data):
     global simple, main_loop, location_data, verbose
     ofono2mm_print("Geoclue got location", verbose)
 
@@ -38,13 +37,13 @@ def on_simple_ready(source_object, result, user_data):
         altitude = location.get_property('altitude')
 
         location_data = (latitude, longitude, altitude)
-    except Exception as e:
+    except Exception:
         location_data = None
     finally:
         if main_loop:
             main_loop.quit()
 
-def on_timeout(user_data):
+def on_timeout(_user_data):
     global simple, main_loop, location_data, verbose
     ofono2mm_print("Geoclue timeout reached", verbose)
 
@@ -70,7 +69,7 @@ def _geoclue_process_func(queue):
 
     seteuid(32011)
     try:
-        timeout_id = GLib.timeout_add_seconds(30, on_timeout, None)
+        GLib.timeout_add_seconds(30, on_timeout, None)
 
         Geoclue.Simple.new_with_thresholds("ModemManager",
                                            Geoclue.AccuracyLevel.EXACT,
@@ -200,7 +199,7 @@ supl-enabled=true
 supl-server={supl}
 """
         try:
-            with open(self.config_path, 'w') as config_file:
+            with open(self.config_path, 'w', encoding='utf-8') as config_file:
                 config_file.write(config_content)
         except IOError as e:
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.Failed', f'Failed to write SUPL server configuration: {e}')
