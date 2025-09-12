@@ -12,7 +12,6 @@ from dbus_fast.constants import PropertyAccess
 from dbus_fast import DBusError, BusType, Variant
 
 from ofono2mm import MMModemInterface, Ofono, DBus
-from ofono2mm.utils import async_locked, read_setting
 from ofono2mm.logging import ofono2mm_print
 from typing import Dict
 
@@ -68,7 +67,7 @@ class MMInterface(ServiceInterface):
         ofono2mm_print("oFono removed", self.verbose)
         self.ofono_manager_interface = None
 
-        for path, modem in self.modems.items():
+        for _path, modem in self.modems.items():
             modem.unexport_mm_interface_objects()
         self.modems.clear()
 
@@ -114,7 +113,6 @@ class MMInterface(ServiceInterface):
                     await self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].call_set_property('Powered', Variant('b', True))
                 except DBusError as e:
                     ofono2mm_print(f"Failed to power up modem {path}: {e}", self.verbose)
-                    pass
 
             if not props['Online'].value:
                 try:
@@ -122,7 +120,6 @@ class MMInterface(ServiceInterface):
                 except DBusError as e:
                     # Can happen if airplane mode is on. Don't worry about it.
                     ofono2mm_print(f"Failed to set modem {path} to online: {e}", self.verbose)
-                    pass
 
                 props.update(await self.ofono_client["ofono_modem"][path]['org.ofono.Modem'].call_get_properties())
 
