@@ -112,8 +112,7 @@ class MMBearerInterface(ServiceInterface):
                     if retries_left == 0:
                         ofono2mm_print(f"Failed to get contexts: {e}", self.verbose)
                         return
-                    else:
-                        await asyncio.sleep(0.2)
+                    await asyncio.sleep(0.2)
 
             chosen_apn = ''
             chosen_auth_method = ''
@@ -321,5 +320,5 @@ class MMBearerInterface(ServiceInterface):
             if changed_props:
                 self.emit_properties_changed(changed_props)
 
-    def ofono_changed(self, name, varval):
+    def ofono_changed(self, _name, _varval):
         asyncio.create_task(self.set_props())
