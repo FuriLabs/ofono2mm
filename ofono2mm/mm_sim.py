@@ -193,10 +193,10 @@ class MMSimInterface(ServiceInterface):
     def Removability(self) -> 'u':
         return self.props['Removability'].value
 
-    def ofono_changed(self, name, varval):
+    def ofono_changed(self, _name, _varval):
         self.set_props()
 
-    def ofono_interface_changed(self, iface):
-        def ch(name, varval):
+    def ofono_interface_changed(self, _iface):
+        def ch(_name, _varval):
             self.set_props()
         return ch
