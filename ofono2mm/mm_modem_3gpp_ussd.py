@@ -96,9 +96,9 @@ class MMModem3gppUssdInterface(ServiceInterface):
     async def NetworkRequest(self) -> 's':
         return self.props['NetworkRequest'].value
 
-    async def property_changed(self, property, value):
-        ofono2mm_print(f"Property changed: {property}: {value.value}", self.verbose)
-        if property == "State":
+    async def property_changed(self, prop, value):
+        ofono2mm_print(f"Property changed: {prop}: {value.value}", self.verbose)
+        if prop == "State":
             if value.value == 'idle':
                 state = 1 # idle MM_MODEM_3GPP_USSD_SESSION_STATE_IDLE
             elif value.value == "active":
