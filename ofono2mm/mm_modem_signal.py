@@ -127,10 +127,10 @@ class MMModemSignalInterface(ServiceInterface):
     def Nr5g(self) -> 'a{sv}':
         return self.props['Nr5g'].value
 
-    def ofono_changed(self, name, varval):
+    def ofono_changed(self, _name, _varval):
         asyncio.create_task(self.set_props())
 
-    def ofono_interface_changed(self, iface):
-        def ch(name, varval):
+    def ofono_interface_changed(self, _iface):
+        def ch(_name, _varval):
             asyncio.create_task(self.set_props())
         return ch
