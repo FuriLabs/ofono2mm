@@ -6,10 +6,9 @@ from uuid import uuid4
 import NetworkManager
 
 from dbus_fast.service import ServiceInterface, method
-from dbus_fast import Variant, DBusError
+from dbus_fast import Variant
 
 from ofono2mm.logging import ofono2mm_print
-from ofono2mm.utils import save_setting, read_setting
 
 from dbus import SystemBus, Interface
 from dbus.mainloop.glib import DBusGMainLoop
@@ -151,20 +150,16 @@ class MMModemSimpleInterface(ServiceInterface):
     async def check_signal_strength(self):
         ofono2mm_print("Checking network registration", self.verbose)
 
+        strength = 0
         try:
             await self.mm_modem.add_ofono_interface('org.ofono.NetworkRegistration')
             if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
                 if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                     strength = self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value
                     ofono2mm_print(f"Signal strength is available: {strength}", self.verbose)
-                    return strength
-                else:
-                    return 0
-            else:
-                return 0
         except Exception as e:
             ofono2mm_print(f"Failed to get signal strength: {e}", self.verbose)
-            return 0
+        return strength
 
     @method()
     async def Connect(self, properties: 'a{sv}') -> 'o':
@@ -265,6 +260,9 @@ class MMModemSimpleInterface(ServiceInterface):
             ofono2mm_print(f"Failed to get carrier name: {e}", self.verbose)
             return False
 
+        apn = ''
+        username = ''
+        password = ''
         try:
             contexts = await self.ofono_interfaces['org.ofono.ConnectionManager'].call_get_contexts()
             for ctx in contexts:
