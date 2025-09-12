@@ -145,7 +145,7 @@ class MMModem3gppInterface(ServiceInterface):
                 try:
                     await self.ofono_interfaces['org.ofono.NetworkRegistration'].call_register()
                 except DBusError:
-                    ofono2mm_print(f"Failed to register to default operator", self.verbose)
+                    ofono2mm_print("Failed to register to default operator", self.verbose)
             return
         try:
             ofono_operator_interface = self.ofono_client["ofono_operator"][f"{self.modem_name}/operator/{operator_id}"]['org.ofono.NetworkOperator']
@@ -273,10 +273,10 @@ class MMModem3gppInterface(ServiceInterface):
     def Nr5gRegistrationSettings(self) -> 'a{sv}':
         return self.props['Nr5gRegistrationSettings'].value
 
-    def ofono_changed(self, name, varval):
+    def ofono_changed(self, _name, _varval):
         asyncio.create_task(self.set_props())
 
-    def ofono_interface_changed(self, iface):
-        def ch(name, varval):
+    def ofono_interface_changed(self, _iface):
+        def ch(_name, _varval):
             asyncio.create_task(self.set_props())
         return ch
