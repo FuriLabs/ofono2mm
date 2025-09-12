@@ -74,7 +74,7 @@ class MMModemMessagingInterface(ServiceInterface):
 
         global message_i
         if 'number' not in properties or 'text' not in properties:
-            ofono2mm_print(f"Properties 'number' or 'text' are not available in properties")
+            ofono2mm_print("Properties 'number' or 'text' are not available in properties", self.verbose)
             return
 
         mm_sms_interface = MMSmsInterface(self.verbose)
