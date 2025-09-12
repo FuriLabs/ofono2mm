@@ -1,15 +1,12 @@
 import asyncio
 
-from glob import glob
-from time import time, sleep
-from re import split
 from ast import literal_eval
 from copy import deepcopy
 
 from dbus_fast.service import (ServiceInterface,
                                method, dbus_property, signal)
 from dbus_fast.constants import PropertyAccess
-from dbus_fast import Variant, DBusError, BusType
+from dbus_fast import Variant, DBusError
 
 from ofono2mm.mm_modem_3gpp import MMModem3gppInterface
 from ofono2mm.mm_modem_3gpp_ussd import MMModem3gppUssdInterface
@@ -29,7 +26,6 @@ from ofono2mm.mm_modem_voice import MMModemVoiceInterface
 from ofono2mm.mm_modem_cell_broadcast import MMModemCellBroadcastInterface
 from ofono2mm.logging import ofono2mm_print
 from ofono2mm.utils import read_setting, save_setting
-from ofono2mm.ofono import Ofono, DBus
 from ofono2mm.dbus_interface_properties import DBusInterfaceProperties
 from ofono2mm.types import _BANDS
 
@@ -305,7 +301,7 @@ class MMModemInterface(ServiceInterface):
         self.mm_interface_objects.append(f'/org/freedesktop/ModemManager/SIM/{self.index}')
 
         # When Present changes, call set_props on myself AND on the SIM interface
-        async def _on_present_changed(prop, value):
+        async def _on_present_changed(_prop, _value):
             await self.set_props()
             self.mm_sim_interface.set_props()
 
@@ -425,15 +421,14 @@ class MMModemInterface(ServiceInterface):
         self.mm_modem_messaging_interface = None
         self.mm_modem_cell_broadcast_interface = None
 
-        for object in self.mm_interface_objects:
+        for mm_object in self.mm_interface_objects:
             try:
                 ofono2mm_print(f"Unexporting object at path {object}", self.verbose)
-                self.bus.unexport(object)
+                self.bus.unexport(mm_object)
             except Exception as e:
                 ofono2mm_print(f"Failed to unexport object at path {object}: {e}", self.verbose)
 
-        for bearer_interface in self.mm_bearer_interfaces:
-            bearer_interface = None
+        self.mm_bearer_interfaces = None
 
         try:
             self.bus.unexport(f'/org/freedesktop/ModemManager1/Modem/{self.index}')
@@ -721,7 +716,6 @@ class MMModemInterface(ServiceInterface):
                     except Exception as e:
                         # Might happen in airplane mode although powered should be false. Just coverin' our bases.
                         ofono2mm_print(f"Failed to set Online to True: {e}", self.verbose)
-                        pass
 
                 if self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
                     if not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none':
@@ -1061,8 +1055,8 @@ class MMModemInterface(ServiceInterface):
         contexts = []
         try:
             contexts = await self.ofono_proxy['org.ofono.ConnectionManager'].call_get_contexts()
-        except Exception as e:
-            ofono2mm_print(f"Failed to get ofono contexts, ignoring", self.verbose)
+        except Exception:
+            ofono2mm_print("Failed to get ofono contexts, ignoring", self.verbose)
 
         for ctx in contexts:
             name = ctx[1].get('Type', Variant('s', '')).value
@@ -1226,7 +1220,7 @@ class MMModemInterface(ServiceInterface):
             self.props['CurrentModes'] = Variant('(uu)', modes)
             self.emit_properties_changed({'CurrentModes': self.props['CurrentModes'].value})
         else:
-            raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', f'The given combination of allowed and preferred modes is not supported')
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'The given combination of allowed and preferred modes is not supported')
 
     @method()
     async def SetCurrentBands(self, bands: 'au'):
@@ -1312,8 +1306,7 @@ class MMModemInterface(ServiceInterface):
         if data != '':
             ofono2mm_print(f"Modem returned: {data_print}", self.verbose)
             return data
-        else:
-            return ''
+        return ''
 
     @method()
     async def Command(self, cmd: 's', timeout: 'u') -> 's':
@@ -1332,7 +1325,7 @@ class MMModemInterface(ServiceInterface):
         # is fully initialized, so it doesn't have the call_send_command method yet.
         try:
             received_data = await self.ofono_interfaces['org.ofono.FuriLabs.AT'].call_send_command(f"{cmd}\r\n")
-        except Exception as e:
+        except Exception:
             return ''
 
         data = received_data.strip()
@@ -1340,8 +1333,7 @@ class MMModemInterface(ServiceInterface):
         if data != '':
             ofono2mm_print(f"Modem returned: {data_print}", self.verbose)
             return data
-        else:
-            return ''
+        return ''
 
     @method()
     def SetProtocol(self, protocol: 'u'):
@@ -1547,7 +1539,7 @@ class MMModemInterface(ServiceInterface):
 
                 return output
         except Exception as e:
-            ofono2mm_print("Failed to get supported bands from AT: {str(e)}, returning dummy list", self.verbose)
+            ofono2mm_print(f"Failed to get supported bands from AT: {str(e)}, returning dummy list", self.verbose)
         return self.props['SupportedBands'].value
 
     @dbus_property(access=PropertyAccess.READ)
@@ -1565,7 +1557,7 @@ class MMModemInterface(ServiceInterface):
 
                 return output
         except Exception as e:
-            ofono2mm_print("Failed to get current bands from AT: {str(e)}, returning dummy list", self.verbose)
+            ofono2mm_print(f"Failed to get current bands from AT: {str(e)}, returning dummy list", self.verbose)
         return self.props['CurrentBands'].value
 
     @dbus_property(access=PropertyAccess.READ)
@@ -1580,7 +1572,7 @@ class MMModemInterface(ServiceInterface):
         elif protocol_str == "dual":
             protocol = 2
         else:
-            ofono2mm_print(f"Protocol string is not dual or ip. Falling back to ip", self.verbose)
+            ofono2mm_print("Protocol string is not dual or ip. Falling back to ip", self.verbose)
             protocol = 1
         return protocol
 
