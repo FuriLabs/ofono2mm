@@ -19,11 +19,11 @@ def fatal(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
     sys.exit(1)
 
-def set_property_wait(interface, property, value, timeout=10):
-    interface.SetProperty(property, value, timeout=120)
-    for i in range(0, timeout):
+def set_property_wait(interface, prop, value, timeout=10):
+    interface.SetProperty(prop, value, timeout=120)
+    for _i in range(0, timeout):
         state = interface.GetProperties()
-        if state[property] == value:
+        if state[prop] == value:
             return True
         time.sleep(1)
 
@@ -170,8 +170,7 @@ def action_power(component, state, command):
         if set_property_wait(modem, component, dbus.Boolean(1 if state else 0)):
             print(message[command][0].format(model))
             return
-        else:
-            fatal(message[command][1].format(model))
+        fatal(message[command][1].format(model))
 
 def action_scan_operators():
     init()
@@ -256,7 +255,7 @@ def action_wan(connect=False, disconnect=False, resolv=False, context_number=Non
                 gateway = s.get("Gateway", "") if method == "static" else ""
                 dns = ", ".join(s.get("DomainNameServers", [])) if method == "static" else ""
                 if address:
-                    address += "/" + str(ipaddress.IPv4Network('0.0.0.0/{}'.format(s["Netmask"])).prefixlen)
+                    address += "/" + str(ipaddress.IPv4Network(f'0.0.0.0/{s["Netmask"]}').prefixlen)
                 dns_servers += s.get("DomainNameServers", [])
             else:
                 method = ""
@@ -377,20 +376,18 @@ def action_sms(destination, message=None):
     if len(modems) == 0:
         print("No modems found")
         sys.exit(1)
-    modem = modems[0][0]
 
+    modem = modems[0][0]
     if message is None:
         editor = 'nano'
         if 'EDITOR' in os.environ:
             editor = os.environ['EDITOR']
         if 'VISUAL' in os.environ:
             editor = os.environ['VISUAL']
-
-        buffer = tempfile.NamedTemporaryFile(suffix='.txt', prefix='sms-')
-        subprocess.call([editor, buffer.name])
-        buffer.seek(0)
-        message = buffer.read().decode().strip()
-        buffer.close()
+        with tempfile.NamedTemporaryFile(suffix='.txt', prefix='sms-') as buffer:
+            subprocess.call([editor, buffer.name])
+            buffer.seek(0)
+            message = buffer.read().decode().strip()
 
     if len(message) == 0:
         print("Message empty. Aborting...")
@@ -414,15 +411,15 @@ def action_sms_get():
     print(messages)
 
 def update_resolvconf(nameservers):
-    with open('/etc/resolv.conf') as handle:
+    with open('/etc/resolv.conf', encoding='utf-8') as handle:
         current = handle.read()
 
     header = 'DNS servers set by ofonoctl'
-    regex = r"# {}.+# end\n".format(header)
 
-    new_block = '# {}\n'.format(header)
+    regex = rf"# {header}.+# end\n"
+    new_block = f'# {header}\n'
     for ns in nameservers:
-        new_block += 'nameserver {}\n'.format(ns)
+        new_block += f'nameserver {ns}\n'
     new_block += '# end\n'
 
     if header in current:
@@ -430,7 +427,7 @@ def update_resolvconf(nameservers):
     else:
         new_file = current + '\n' + new_block
 
-    with open('/etc/resolv.conf', 'w') as handle:
+    with open('/etc/resolv.conf', 'w', encoding='utf-8') as handle:
         handle.write(new_file)
 
 def main():
