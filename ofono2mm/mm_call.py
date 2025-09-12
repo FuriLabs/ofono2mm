@@ -32,10 +32,10 @@ class MMCallInterface(ServiceInterface):
         self.ofono_voicecall = self.ofono_client["ofono_modem"][self.voicecall]['org.ofono.VoiceCall']
         self.ofono_voicecall.on_property_changed(self.property_changed)
 
-    def property_changed(self, property, value):
-        ofono2mm_print(f"Voice Call {self.voicecall} property {property} changed to {value}", self.verbose)
+    def property_changed(self, prop, value):
+        ofono2mm_print(f"Voice Call {self.voicecall} property {prop} changed to {value}", self.verbose)
 
-        if property == "State":
+        if prop == "State":
             if value.value == "active":
                 old_state = self.props['State'].value
                 new_state = 4 # active MM_CALL_STATE_ACTIVE
