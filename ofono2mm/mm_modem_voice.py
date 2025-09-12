@@ -1,6 +1,3 @@
-from time import sleep
-import asyncio
-
 from dbus_fast.service import ServiceInterface, method, dbus_property, signal
 from dbus_fast.constants import PropertyAccess
 from dbus_fast import Variant
@@ -59,7 +56,7 @@ class MMModemVoiceInterface(ServiceInterface):
             number = number.split('#', 1)[-1]
         return number
 
-    async def add_call(self, path, props):
+    def add_call(self, path, props):
         ofono2mm_print(f"Add call with object path {path} and properties {props}", self.verbose)
 
         global call_i
@@ -125,7 +122,7 @@ class MMModemVoiceInterface(ServiceInterface):
             self.CallAdded(object_path)
             call_i += 1
 
-    async def remove_call(self, path):
+    def remove_call(self, path):
         ofono2mm_print(f"Remove call with object path {path}", self.verbose)
 
         try:
@@ -143,7 +140,7 @@ class MMModemVoiceInterface(ServiceInterface):
         self.set_emergency_mode()
 
     @method()
-    async def ListCalls(self) -> 'ao':
+    def ListCalls(self) -> 'ao':
         ofono2mm_print("Returning list of calls", self.verbose)
         return self.props['Calls'].value
 
