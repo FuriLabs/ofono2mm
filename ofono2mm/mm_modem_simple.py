@@ -147,20 +147,6 @@ class MMModemSimpleInterface(ServiceInterface):
 
         self.props['current-bands'] = Variant('au', supported_bands)
 
-    async def check_signal_strength(self):
-        ofono2mm_print("Checking network registration", self.verbose)
-
-        strength = 0
-        try:
-            await self.mm_modem.add_ofono_interface('org.ofono.NetworkRegistration')
-            if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
-                if 'Strength' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
-                    strength = self.ofono_interface_props['org.ofono.NetworkRegistration']['Strength'].value
-                    ofono2mm_print(f"Signal strength is available: {strength}", self.verbose)
-        except Exception as e:
-            ofono2mm_print(f"Failed to get signal strength: {e}", self.verbose)
-        return strength
-
     @method()
     async def Connect(self, properties: 'a{sv}') -> 'o':
         ofono2mm_print(f"Connecting with properties {properties}", self.verbose)
