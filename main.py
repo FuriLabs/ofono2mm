@@ -76,9 +76,6 @@ class MMInterface(ServiceInterface):
     async def find_ofono_modems(self, retry_counter=5):
         ofono2mm_print("Finding oFono modems", self.verbose)
 
-        self.mm_modem_objects = []
-        self.mm_modem_interfaces = []
-
         if not self.ofono_manager_interface:
             ofono2mm_print("oFono manager interface is empty, skipping", self.verbose)
             return
