@@ -217,21 +217,6 @@ class MMModemInterface(ServiceInterface):
 
         ofono2mm_print("Successfully restored saved bands", self.verbose)
 
-    async def remove_ofono_interface(self, iface):
-        ofono2mm_print(f"Remove oFono interface for iface {iface}", self.verbose)
-
-        if iface in self.ofono_interfaces:
-            self.ofono_interfaces.pop(iface)
-
-        await self.set_props()
-
-        if self.mm_modem3gpp_interface:
-            await self.mm_modem3gpp_interface.set_props()
-        if self.mm_sim_interface:
-            self.mm_sim_interface.set_props()
-        if self.mm_modem_signal_interface:
-            await self.mm_modem_signal_interface.set_props()
-
     async def init_connection_manager(self):
         while True:
             ofono2mm_print("Waiting for oFono connection manager to appear", self.verbose)
