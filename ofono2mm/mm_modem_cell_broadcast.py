@@ -26,7 +26,10 @@ class MMModemCellBroadcastInterface(ServiceInterface):
         if 'org.ofono.CellBroadcast' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.CellBroadcast'].on_incoming_broadcast(self.add_incoming_broadcast)
             self.ofono_interfaces['org.ofono.CellBroadcast'].on_emergency_broadcast(self.add_emergency_broadcast)
-            await self.ofono_interfaces['org.ofono.CellBroadcast'].call_set_property('Powered', Variant('b', True))
+            try:
+                await self.ofono_interfaces['org.ofono.CellBroadcast'].call_set_property('Powered', Variant('b', True))
+            except Exception as e:
+                ofono2mm_print(f"Failed to set org.ofono.CellBroadcast Powered to True: {e}", self.verbose)
         else:
             ofono2mm_print("org.ofono.CellBroadcast was not available when initializing cell broadcast", self.verbose)
 
