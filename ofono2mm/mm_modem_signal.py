@@ -90,7 +90,7 @@ class MMModemSignalInterface(ServiceInterface):
                     self.emit_properties_changed({prop: self.props[prop].value})
 
     @method()
-    async def Setup(self, rate: 'u'):
+    def Setup(self, rate: 'u'):
         ofono2mm_print(f"Setup with rate {rate}", self.verbose)
         self.props['Rate'] = Variant('u', rate)
         self.emit_properties_changed({'Rate': self.props['Rate'].value})
