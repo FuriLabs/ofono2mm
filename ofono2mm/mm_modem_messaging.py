@@ -52,12 +52,12 @@ class MMModemMessagingInterface(ServiceInterface):
         message_i += 1
 
     @method()
-    async def List(self) -> 'ao':
+    def List(self) -> 'ao':
         ofono2mm_print("Returning list of messages", self.verbose)
         return self.props['Messages'].value
 
     @method()
-    async def Delete(self, path: 'o'):
+    def Delete(self, path: 'o'):
         ofono2mm_print(f"Delete message with object path {path}", self.verbose)
 
         if path in self.props['Messages'].value:
