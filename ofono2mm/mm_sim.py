@@ -138,7 +138,7 @@ class MMSimInterface(ServiceInterface):
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot change PIN: SIM not currently active')
 
     @method()
-    async def SetPreferredNetworks(self, preferred_networks: 'a(su)'):
+    def SetPreferredNetworks(self, preferred_networks: 'a(su)'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'setting preferred networks is unsupported')
 
     @dbus_property(access=PropertyAccess.READ)
