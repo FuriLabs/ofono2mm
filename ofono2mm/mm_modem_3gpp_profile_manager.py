@@ -29,7 +29,7 @@ class MMModem3gppProfileManagerInterface(ServiceInterface):
         }
 
     @method()
-    async def List(self) -> 'aa{sv}':
+    def List(self) -> 'aa{sv}':
         ofono2mm_print("Returning list of profiles", self.verbose)
         properties = {}
         for key, value in self.props.items():
@@ -60,7 +60,7 @@ class MMModem3gppProfileManagerInterface(ServiceInterface):
         return stored_properties
 
     @method()
-    async def Delete(self, properties: 'a{sv}'):
+    def Delete(self, properties: 'a{sv}'):
         ofono2mm_print(f"Deleting profile with properties {properties}", self.verbose)
 
         for key in properties.items():
