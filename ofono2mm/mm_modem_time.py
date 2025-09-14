@@ -20,7 +20,7 @@ class MMModemTimeInterface(ServiceInterface):
             'leap-seconds': Variant('i', 0)
         }
 
-    async def init_time(self):
+    def init_time(self):
         ofono2mm_print("Initializing signals", self.verbose)
 
         if 'org.ofono.NetworkTime' in self.ofono_interfaces:
@@ -28,7 +28,7 @@ class MMModemTimeInterface(ServiceInterface):
         else:
             ofono2mm_print("org.ofono.NetworkTime was not available when initializing time", self.verbose)
 
-    async def update_time(self, time):
+    def update_time(self, time):
         ofono2mm_print(f"Updating time to {time}", self.verbose)
         utc_time = time['UTC'].value
         network_time = datetime.fromtimestamp(utc_time, tz=timezone.utc)

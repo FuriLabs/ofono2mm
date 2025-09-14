@@ -232,7 +232,7 @@ class MMModemInterface(ServiceInterface):
             ofono2mm_print("Waiting for oFono network time to appear", self.verbose)
             if 'org.ofono.NetworkTime' in self.ofono_interfaces:
                 ofono2mm_print("oFono network time appeared, initializing modem time interface", self.verbose)
-                await self.mm_modem_time_interface.init_time()
+                self.mm_modem_time_interface.init_time()
                 await self.set_props()
                 return
             await asyncio.sleep(0.3)
