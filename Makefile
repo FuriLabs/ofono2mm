@@ -4,6 +4,7 @@ BINDIR ?= $(PREFIX)/bin
 SBINDIR ?= $(PREFIX)/sbin
 SYSTEMD_DIR = /usr/lib/systemd/system
 POLKIT_DIR = /etc/polkit-1/localauthority/10-vendor.d
+DBUS_DIR = /etc/dbus-1/system.d
 
 MAIN = main.py
 OFONO2MM_DIR = ofono2mm
@@ -36,9 +37,13 @@ install:
 	install -d $(DESTDIR)$(POLKIT_DIR)
 	install -m 644 extra/ofono2mm-radio.pkla $(DESTDIR)$(POLKIT_DIR)/
 
+	install -d $(DESTDIR)$(DBUS_DIR)
+	install -m 644 extra/org.freedesktop.ModemManager1.conf $(DESTDIR)$(DBUS_DIR)
+
 uninstall:
 	rm -rf $(DESTDIR)$(LIBDIR)/ofono2mm/
 	rm -f $(DESTDIR)$(SBINDIR)/ofono2mm
 	rm -f $(DESTDIR)$(BINDIR)/ofonoctl
 	rm -f $(DESTDIR)$(SYSTEMD_DIR)/ModemManager.service.d/10-ofono2mm.conf
 	rm -f $(DESTDIR)$(POLKIT_DIR)/ofono2mm-radio.pkla
+	rm -f $(DESTDIR)$(DBUS_DIR)/org.freedesktop.ModemManager1.conf

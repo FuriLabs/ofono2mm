@@ -1,4 +1,5 @@
 etc/polkit-1/localauthority/10-vendor.d/ofono2mm-radio.pkla
+etc/dbus-1/system.d/org.freedesktop.ModemManager1.conf
 usr/lib/ofono2mm/dbus.xml
 usr/lib/ofono2mm/main.py
 usr/lib/ofono2mm/ofono.xml
