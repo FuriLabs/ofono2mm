@@ -178,10 +178,10 @@ class MMModemSimpleInterface(ServiceInterface):
             else:
                 ofono2mm_print(f"Failed to create bearer, active connect is {self.mm_modem.bearers[bearer].active_connect}", self.verbose)
                 # 0 is always available so just fallback to that, whatever
-                bearer = '/org/freedesktop/ModemManager/Bearer/0'
+                bearer = '/org/freedesktop/ModemManager1/Bearer/0'
         except Exception as e:
             ofono2mm_print(f"Failed to create bearer: {e}", self.verbose)
-            bearer = '/org/freedesktop/ModemManager/Bearer/0'
+            bearer = '/org/freedesktop/ModemManager1/Bearer/0'
 
         ofono2mm_print(f"Bearer activated at path {bearer}", self.verbose)
         return bearer

@@ -64,7 +64,7 @@ class MMModemInterface(ServiceInterface):
         self.mm_interface_objects = [f'/org/freedesktop/ModemManager1/Modem/{self.index}']
         self.mm_bearer_interfaces = []
         self.selected_current_mode = []
-        self.sim = Variant('o', f'/org/freedesktop/ModemManager/SIM/{self.index}')
+        self.sim = Variant('o', f'/org/freedesktop/ModemManager1/SIM/{self.index}')
         self.bearers = {}
 
         self.was_powered = False
@@ -96,7 +96,7 @@ class MMModemInterface(ServiceInterface):
 
         self.props = {
             'Sim': Variant('o', '/'),
-            'SimSlots': Variant('ao', [f'/org/freedesktop/ModemManager/SIM/{self.index}']),
+            'SimSlots': Variant('ao', [f'/org/freedesktop/ModemManager1/SIM/{self.index}']),
             'PrimarySimSlot': Variant('u', 0),
             'Bearers': Variant('ao', []),
             'SupportedCapabilities': Variant('au', [0]), # on runtime none MM_MODEM_CAPABILITY_NONE
@@ -280,10 +280,10 @@ class MMModemInterface(ServiceInterface):
         ofono2mm_print("Initialize SIM interface", self.verbose)
 
         self.mm_sim_interface = MMSimInterface(self.modem_name, self.ofono_interfaces, self.ofono_interface_props, self.verbose)
-        self.bus.export(f'/org/freedesktop/ModemManager/SIM/{self.index}', self.mm_sim_interface)
+        self.bus.export(f'/org/freedesktop/ModemManager1/SIM/{self.index}', self.mm_sim_interface)
         self.mm_sim_interface.set_props()
 
-        self.mm_interface_objects.append(f'/org/freedesktop/ModemManager/SIM/{self.index}')
+        self.mm_interface_objects.append(f'/org/freedesktop/ModemManager1/SIM/{self.index}')
 
         # When Present changes, call set_props on myself AND on the SIM interface
         async def _on_present_changed(_prop, _value):
@@ -537,7 +537,7 @@ class MMModemInterface(ServiceInterface):
                 ofono_ctx_interface.on_property_changed(mm_bearer_interface.ofono_context_changed)
                 mm_bearer_interface.ofono_ctx = ctx[0]
 
-                object_path = f'/org/freedesktop/ModemManager/Bearer/{bearer_i}'
+                object_path = f'/org/freedesktop/ModemManager1/Bearer/{bearer_i}'
                 mm_bearer_interface.own_object_path = object_path
                 self.bus.export(object_path, mm_bearer_interface)
                 self.props['Bearers'].value.append(object_path)
@@ -635,7 +635,7 @@ class MMModemInterface(ServiceInterface):
             ofono_ctx_interface.on_property_changed(mm_bearer_interface.ofono_context_changed)
             mm_bearer_interface.ofono_ctx = path
 
-            object_path = f'/org/freedesktop/ModemManager/Bearer/{bearer_i}'
+            object_path = f'/org/freedesktop/ModemManager1/Bearer/{bearer_i}'
             mm_bearer_interface.own_object_path = object_path
             self.bus.export(object_path, mm_bearer_interface)
             self.props['Bearers'].value.append(object_path)
@@ -1081,7 +1081,7 @@ class MMModemInterface(ServiceInterface):
                # this should also be fine, as it again comes from apndb or mbpi so we don't really nee to touch it
                ofono2mm_print(f"Failed to set ofono authentication: {e}, ignoring", self.verbose)
 
-        object_path = f'/org/freedesktop/ModemManager/Bearer/{bearer_i}'
+        object_path = f'/org/freedesktop/ModemManager1/Bearer/{bearer_i}'
         mm_bearer_interface.own_object_path = object_path
         self.bus.export(object_path, mm_bearer_interface)
 
