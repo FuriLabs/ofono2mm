@@ -72,24 +72,9 @@ class MMSimInterface(ServiceInterface):
             self.props['OperatorIdentifier'] = Variant('s', '')
             self.props['PreferredNetworks'] = Variant('a(su)', [])
 
-        # if sim manager is not available for some info, get it from network registration
+        # this is not entirely correct either, OperatorName must come from data saved on the SIM and not the network
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
             self.props['OperatorName'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props else '')
-
-            if 'MobileCountryCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
-                MCC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileCountryCode'].value
-            else:
-                MCC = ''
-
-            if 'MobileNetworkCode' in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
-                MNC = self.ofono_interface_props['org.ofono.NetworkRegistration']['MobileNetworkCode'].value
-            else:
-                MNC = ''
-
-            if not self.props['OperatorIdentifier'].value:
-                self.props['OperatorIdentifier'] = Variant('s', f"{MCC}{MNC}")
-            if not self.props['PreferredNetworks'].value:
-                self.props['PreferredNetworks'] = Variant('a(su)', [[f"{MCC}{MNC}", 19]] if MCC and MNC else [])
 
         if 'org.ofono.VoiceCallManager' in self.ofono_interface_props:
             self.props['EmergencyNumbers'] = Variant('as', self.ofono_interface_props['org.ofono.VoiceCallManager']['EmergencyNumbers'].value if 'EmergencyNumbers' in self.ofono_interface_props['org.ofono.VoiceCallManager'].props else [])
