@@ -40,14 +40,19 @@ class MMModemSimpleInterface(ServiceInterface):
         ofono2mm_print("Updating simple properties", self.verbose)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props and 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
-            if not self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
+            sim_props = self.ofono_interface_props['org.ofono.SimManager']
+            if not sim_props['Present'].value:
                 ofono2mm_print("SIM is not present. no need to set simple props", self.verbose)
                 return
         else:
             ofono2mm_print("SIM manager is not up yet. cannot set simple props", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
+        if pin_required is None:
+            return
+
+        if pin_required != 'none':
             ofono2mm_print("SIM is still locked and/or not ready. cannot set simple props", self.verbose)
             return
 
@@ -155,9 +160,11 @@ class MMModemSimpleInterface(ServiceInterface):
             ofono2mm_print("User provided no apn, using default value ''", self.verbose)
             apn = ''
         else:
-            apn = properties['apn']
+            apn = properties['apn'].value
+
         for b in self.mm_modem.bearers:
-            if self.mm_modem.bearers[b].props['Properties'].value['apn'] == apn:
+            bearer_apn = self.mm_modem.bearers[b].props['Properties'].value['apn'].value if 'apn' in self.mm_modem.bearers[b].props['Properties'].value else ''
+            if bearer_apn == apn:
                 try:
                     await self.mm_modem.bearers[b].add_auth_ofono(properties['username'].value if 'username' in properties else '',
                                                                   properties['password'].value if 'password' in properties else '')
@@ -196,7 +203,7 @@ class MMModemSimpleInterface(ServiceInterface):
                     await self.mm_modem.bearers[b].doDisconnect()
                 except Exception as e:
                     ofono2mm_print(f"Failed to disconnect bearer {path}: {e}", self.verbose)
-        if path in self.mm_modem.bearers:
+        elif path in self.mm_modem.bearers:
             try:
                 await self.mm_modem.bearers[path].doDisconnect()
             except Exception as e:
@@ -212,7 +219,8 @@ class MMModemSimpleInterface(ServiceInterface):
         ofono2mm_print("Generating Network Manager connection", self.verbose)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props and 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
-            if not self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
+            sim_props = self.ofono_interface_props['org.ofono.SimManager']
+            if not sim_props['Present'].value:
                 ofono2mm_print("SIM is not present. no need to set APN", self.verbose)
                 return True
         else:
@@ -220,7 +228,12 @@ class MMModemSimpleInterface(ServiceInterface):
             await asyncio.sleep(3)
             return False
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
+        if pin_required is None:
+            await asyncio.sleep(3)
+            return False
+
+        if pin_required != 'none':
             ofono2mm_print("SIM is still locked and/or not ready", self.verbose)
             await asyncio.sleep(3)
             return False
@@ -230,13 +243,17 @@ class MMModemSimpleInterface(ServiceInterface):
         current_timestamp = int(time())
 
         try:
-            sim_id = self.ofono_interface_props['org.ofono.SimManager']['CardIdentifier'].value
+            sim_id = sim_props['CardIdentifier'].value
         except Exception as e:
             ofono2mm_print(f"Failed to get sim identifier: {e}", self.verbose)
             return False
 
         try:
             await self.mm_modem.add_ofono_interface('org.ofono.NetworkRegistration')
+            if 'org.ofono.NetworkRegistration' not in self.ofono_interface_props or 'Name' not in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
+                ofono2mm_print("Carrier name is not available yet", self.verbose)
+                await asyncio.sleep(3)
+                return False
             carrier_name = self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value
             if not carrier_name:
                 ofono2mm_print("Carrier name is empty. Not registered to a network yet", self.verbose)
@@ -244,6 +261,11 @@ class MMModemSimpleInterface(ServiceInterface):
                 return False
         except Exception as e:
             ofono2mm_print(f"Failed to get carrier name: {e}", self.verbose)
+            return False
+
+        if 'org.ofono.ConnectionManager' not in self.ofono_interfaces:
+            ofono2mm_print("Connection manager is not up yet", self.verbose)
+            await asyncio.sleep(3)
             return False
 
         apn = ''
