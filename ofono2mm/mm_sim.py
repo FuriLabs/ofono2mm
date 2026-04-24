@@ -97,7 +97,7 @@ class MMSimInterface(ServiceInterface):
         ofono2mm_print(f"Sending puk {puk} pin {pin}", self.verbose)
 
         if 'org.ofono.SimManager' in self.ofono_interfaces:
-            await self.ofono_interfaces['org.ofono.SimManager'].call_reset_pin('pin', puk, pin)
+            await self.ofono_interfaces['org.ofono.SimManager'].call_reset_pin('puk', puk, pin)
         else:
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot send PUK: SIM not currently active')
 
