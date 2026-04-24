@@ -427,14 +427,19 @@ class MMModemInterface(ServiceInterface):
         ofono2mm_print("Checking ofono contexts", self.verbose)
 
         if 'org.ofono.SimManager' in self.ofono_interface_props and 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
-            if not self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
+            sim_props = self.ofono_interface_props['org.ofono.SimManager']
+            if not sim_props['Present'].value:
                 ofono2mm_print("SIM is not present. no need to check ofono contexts", self.verbose)
                 return
         else:
             ofono2mm_print("SIM manager is not up yet. cannot check ofono contexts", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
+        if pin_required is None:
+            return
+
+        if pin_required != 'none':
             ofono2mm_print("SIM is still locked and/or not ready. cannot check ofono contexts", self.verbose)
             return
 
@@ -457,9 +462,13 @@ class MMModemInterface(ServiceInterface):
                     ofono2mm_print(f"Failed to get contexts: {e}", self.verbose)
                     return
 
-        old_bearer_list = self.props['Bearers'].value
+        existing_contexts = [bearer.ofono_ctx for bearer in self.bearers.values()]
+        old_bearer_list = list(self.props['Bearers'].value)
         for ctx in contexts:
-            if ctx[1]['Type'].value == "internet":
+            if ctx[1].get('Type', Variant('s', '')).value == "internet":
+                if ctx[0] in existing_contexts:
+                    continue
+
                 mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self, self.verbose)
                 self.mm_bearer_interfaces.append(mm_bearer_interface)
 
@@ -507,7 +516,7 @@ class MMModemInterface(ServiceInterface):
 
                 mm_bearer_interface.props.update({
                     "Interface": ctx[1]['Settings'].value.get("Interface", Variant('s', '')) if 'Settings' in ctx[1] else Variant('s', ''),
-                    "Connected": ctx[1]['Active'],
+                    "Connected": ctx[1].get('Active', Variant('b', False)),
                     "Ip4Config": Variant('a{sv}', {
                         "method": Variant('u', ipv4_method),
                         "address": Variant('s', ipv4_address),
@@ -525,13 +534,15 @@ class MMModemInterface(ServiceInterface):
                         "gateway": Variant('s', ipv6_gateway)
                     }),
                     "Properties": Variant('a{sv}', {
-                        "apn": ctx[1]['AccessPointName']
+                        "apn": ctx[1].get('AccessPointName', Variant('s', ''))
                     })
                 })
 
                 if 'Settings' in ctx[1] and 'Interface' in ctx[1]['Settings'].value:
-                    self.props['Ports'].value.append([ctx[1]['Settings'].value['Interface'].value, 2]) # port type AT MM_MODEM_PORT_TYPE_AT
-                    self.emit_properties_changed({'Ports': self.props['Ports'].value})
+                    port = [ctx[1]['Settings'].value['Interface'].value, 2]
+                    if port not in self.props['Ports'].value:
+                        self.props['Ports'].value.append(port) # port type AT MM_MODEM_PORT_TYPE_AT
+                        self.emit_properties_changed({'Ports': self.props['Ports'].value})
 
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ctx[0]]["org.ofono.ConnectionContext"]
                 ofono_ctx_interface.on_property_changed(mm_bearer_interface.ofono_context_changed)
@@ -557,7 +568,10 @@ class MMModemInterface(ServiceInterface):
         ofono2mm_print(f"oFono context added with path {path} and properties {properties}", self.verbose)
 
         global bearer_i
-        if properties['Type'] == "internet":
+        if properties.get('Type', Variant('s', '')).value == "internet":
+            existing_contexts = [bearer.ofono_ctx for bearer in self.bearers.values()]
+            if path in existing_contexts:
+                return
             mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self, self.verbose)
             self.mm_bearer_interfaces.append(mm_bearer_interface)
 
@@ -605,7 +619,7 @@ class MMModemInterface(ServiceInterface):
 
             mm_bearer_interface.props.update({
                 "Interface": properties['Settings'].value.get('Interface', Variant('s', '')) if 'Settings' in properties else Variant('s', ''),
-                "Connected": properties['Active'],
+                "Connected": properties.get('Active', Variant('b', False)),
                 "Ip4Config": Variant('a{sv}', {
                     "method": Variant('u', ipv4_method),
                     "address": Variant('s', ipv4_address),
@@ -623,13 +637,15 @@ class MMModemInterface(ServiceInterface):
                     "gateway": Variant('s', ipv6_gateway)
                 }),
                 "Properties": Variant('a{sv}', {
-                    "apn": properties['AccessPointName']
+                    "apn": properties.get('AccessPointName', Variant('s', ''))
                 })
             })
 
             if 'Settings' in properties and 'Interface' in properties['Settings'].value:
-                self.props['Ports'].value.append([properties['Settings'].value['Interface'].value, 2])
-                self.emit_properties_changed({'Ports': self.props['Ports'].value})
+                port = [properties['Settings'].value['Interface'].value, 2]
+                if port not in self.props['Ports'].value:
+                    self.props['Ports'].value.append(port)
+                    self.emit_properties_changed({'Ports': self.props['Ports'].value})
 
             ofono_ctx_interface = self.ofono_client["ofono_context"][path]['org.ofono.ConnectionContext']
             ofono_ctx_interface.on_property_changed(mm_bearer_interface.ofono_context_changed)
@@ -703,7 +719,11 @@ class MMModemInterface(ServiceInterface):
                         ofono2mm_print(f"Failed to set Online to True: {e}", self.verbose)
 
                 if self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
-                    if not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none':
+                    sim_props = self.ofono_interface_props['org.ofono.SimManager']
+                    pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
+                    if pin_required is None:
+                        self.props['State'] = Variant('i', -1) # state unknown
+                    elif pin_required == 'none':
                         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
                         if self.ofono_interface_props['org.ofono.Modem']['Online'].value:
                             if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
@@ -724,7 +744,7 @@ class MMModemInterface(ServiceInterface):
                             self.props['State'] = Variant('i', 3) # modem is disabled MM_MODEM_STATE_DISABLED
 
                         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
-                    else:
+                    elif pin_required != 'none':
                         self.props['UnlockRequired'] = Variant('u', 2) # modem needs a pin MM_MODEM_LOCK_SIM_PIN
                         self.props['State'] = Variant('i', 2) # modem is locked MM_MODEM_STATE_LOCKED
                         self.locked = True
@@ -799,7 +819,7 @@ class MMModemInterface(ServiceInterface):
             self.props['UnlockRetries'] = Variant('a{uu}', {})
 
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props and self.props['State'].value == 8:
-            if "Technology" in self.ofono_interface_props['org.ofono.NetworkRegistration']:
+            if "Technology" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props:
                 current_tech = 0
                 if self.ofono_interface_props['org.ofono.NetworkRegistration']["Technology"].value == "nr":
                     current_tech |= 1 << 15 # network is 5g MM_MODEM_ACCESS_TECHNOLOGY_5GNR
@@ -1050,14 +1070,13 @@ class MMModemInterface(ServiceInterface):
                 if apn:
                     chosen_apn = apn
                 ofono_ctx = ctx[0]
-
-            if ofono_ctx:
                 internet_ctx_exists = True
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
                 await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
                 await ofono_ctx_interface.call_set_property("AccessPointName", Variant('s', chosen_apn))
                 await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
                 await ofono_ctx_interface.call_set_property("Active", Variant('b', True))
+                break
 
         if not internet_ctx_exists:
             try:
@@ -1102,9 +1121,11 @@ class MMModemInterface(ServiceInterface):
     async def DeleteBearer(self, path: 'o'):
         ofono2mm_print(f"Delete bearer with object path {path}", self.verbose)
 
-        if path in self.props['Bearers'].value:
+        if path in self.props['Bearers'].value and path in self.bearers:
+            bearer = self.bearers[path]
+            if bearer.ofono_ctx:
+                await self.ofono_proxy['org.ofono.ConnectionManager'].call_remove_context(bearer.ofono_ctx)
             self.props['Bearers'].value.remove(path)
-            await self.ofono_proxy['org.ofono.ConnectionManager'].call_remove_context(self.bearers[path].ofono_ctx)
             self.bearers.pop(path)
             self.bus.unexport(path)
             self.emit_properties_changed({'Bearers': self.props['Bearers'].value})
