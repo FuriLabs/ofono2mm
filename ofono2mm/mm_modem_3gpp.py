@@ -60,14 +60,16 @@ class MMModem3gppInterface(ServiceInterface):
         sim_props = self.ofono_interface_props['org.ofono.SimManager']
         pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
 
+        if 'LockedPins' in sim_props.props and 'pin' in sim_props['LockedPins'].value:
+            self.props['EnabledFacilityLocks'] = Variant('u', 1) # MM_MODEM_3GPP_FACILITY_SIM
+        else:
+            self.props['EnabledFacilityLocks'] = Variant('u', 0) # MM_MODEM_3GPP_FACILITY_NONE
+
         if pin_required is None:
             return
 
         if pin_required != 'none':
-            self.props['EnabledFacilityLocks'] = Variant('u', 1) # MM_MODEM_3GPP_FACILITY_SIM
             return
-
-        self.props['EnabledFacilityLocks'] = Variant('u', 0) # MM_MODEM_3GPP_FACILITY_NONE
 
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
             self.props['OperatorName'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props else '')
