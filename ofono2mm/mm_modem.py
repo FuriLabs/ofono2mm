@@ -863,7 +863,7 @@ class MMModemInterface(ServiceInterface):
                     modes |= 8
                     supported_bands.extend(lte_bands)
                 if 'nr' in ofono_techs:
-                    caps |= 16
+                    caps |= 64
                     modes |= 16
                     supported_bands.extend(nr_bands)
 
