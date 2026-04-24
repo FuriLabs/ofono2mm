@@ -408,10 +408,10 @@ class MMModemInterface(ServiceInterface):
 
         for mm_object in self.mm_interface_objects:
             try:
-                ofono2mm_print(f"Unexporting object at path {object}", self.verbose)
+                ofono2mm_print(f"Unexporting object at path {mm_object}", self.verbose)
                 self.bus.unexport(mm_object)
             except Exception as e:
-                ofono2mm_print(f"Failed to unexport object at path {object}: {e}", self.verbose)
+                ofono2mm_print(f"Failed to unexport object at path {mm_object}: {e}", self.verbose)
 
         self.mm_bearer_interfaces = None
 
