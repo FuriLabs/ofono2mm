@@ -40,7 +40,7 @@ class MMModem3gppInterface(ServiceInterface):
             'PacketServiceState': Variant('u', 0), # on runtime unknown MM_MODEM_3GPP_PACKET_SERVICE_STATE_UNKNOWN
             'Nr5gRegistrationSettings': Variant('a{sv}', {
                 'mico-mode': Variant('u', 0), # hardcoded value unknown MM_MODEM_3GPP_MICO_MODE_UNKNOWN
-                'dtx-cycle': Variant('u', 0) # hardcoded value unknown MM_MODEM_3GPP_DRX_CYCLE_UNKNOWN
+                'drx-cycle': Variant('u', 0) # hardcoded value unknown MM_MODEM_3GPP_DRX_CYCLE_UNKNOWN
             })
         }
 
