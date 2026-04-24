@@ -413,7 +413,7 @@ class MMModemInterface(ServiceInterface):
             except Exception as e:
                 ofono2mm_print(f"Failed to unexport object at path {mm_object}: {e}", self.verbose)
 
-        self.mm_bearer_interfaces = None
+        self.mm_bearer_interfaces = []
 
         try:
             self.bus.unexport(f'/org/freedesktop/ModemManager1/Modem/{self.index}')
