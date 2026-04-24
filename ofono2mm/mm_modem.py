@@ -885,8 +885,8 @@ class MMModemInterface(ServiceInterface):
         self.props['SupportedBands'] = Variant('au', supported_bands)
 
         if caps == 0:
-            self.props['CurrentCapabilities'] = Variant('u', 4) # lte MM_MODEM_CAPABILITY_LTE
-            self.props['SupportedCapabilities'] = Variant('au', [4]) # lte MM_MODEM_CAPABILITY_LTE
+            self.props['CurrentCapabilities'] = Variant('u', 8) # lte MM_MODEM_CAPABILITY_LTE
+            self.props['SupportedCapabilities'] = Variant('au', [8]) # lte MM_MODEM_CAPABILITY_LTE
 
         supported_modes = []
         if modes == 30: # gsm umts lte nr
