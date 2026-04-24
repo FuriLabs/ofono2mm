@@ -150,23 +150,26 @@ class MMBearerInterface(ServiceInterface):
             roaming_allowed = None
             ofono_props = await ofono_interface.call_get_properties()
 
-            if ofono_props.get('RoamingAllowed', Variant('b', True).value) != "":
-                roaming_allowed = ofono_props.get('RoamingAllowed', Variant('b', True).value).value
+            roaming_allowed = ofono_props.get('RoamingAllowed', Variant('b', True)).value
 
-                if read_setting('roaming').strip() != str(roaming_allowed):
-                    ofono2mm_print("Saving roaming toggle state", self.verbose)
-                    save_setting('roaming', str(roaming_allowed))
+            if read_setting('roaming').strip() != str(roaming_allowed):
+                ofono2mm_print("Saving roaming toggle state", self.verbose)
+                save_setting('roaming', str(roaming_allowed))
 
-                if roaming_allowed == True:
-                    new_properties['roaming-allowance'] = Variant('u', 2) # roaming partner network MM_BEARER_ROAMING_ALLOWANCE_PARTNER
-                elif roaming_allowed == False:
-                    new_properties['roaming-allowance'] = Variant('u', 0) # roaming none MM_BEARER_ROAMING_ALLOWANCE_NONE
+            if roaming_allowed == True:
+                new_properties['roaming-allowance'] = Variant('u', 2) # roaming partner network MM_BEARER_ROAMING_ALLOWANCE_PARTNER
+            elif roaming_allowed == False:
+                new_properties['roaming-allowance'] = Variant('u', 0) # roaming none MM_BEARER_ROAMING_ALLOWANCE_NONE
 
             self.props['Properties'] = Variant('a{sv}', new_properties)
 
+        changed_props = {}
         for prop in self.props:
             if self.props[prop].value != old_props[prop].value:
-                self.emit_properties_changed({prop: self.props[prop].value})
+                changed_props.update({ prop: self.props[prop].value })
+
+        if changed_props:
+            self.emit_properties_changed(changed_props)
 
     @method()
     async def Connect(self):
@@ -181,6 +184,9 @@ class MMBearerInterface(ServiceInterface):
             await self.set_props()
         except Exception as e:
             ofono2mm_print(f"Failed to set props: {e}", self.verbose)
+
+        if not self.ofono_ctx:
+            raise Exception("No oFono context set for bearer")
 
         ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
         ofono2mm_print(f"Number of active connection requests: {self.active_connect}", self.verbose)
@@ -229,8 +235,13 @@ class MMBearerInterface(ServiceInterface):
         # Cancel an eventual reconnection task
         await self.cancel_reconnect_task()
 
+        if not self.ofono_ctx:
+            self.disconnecting = False
+            raise Exception("No oFono context set for bearer")
+
         ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
         await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
+        self.disconnecting = False
 
     async def add_auth_ofono(self, username, password):
         ofono2mm_print(f"Add authentication to oFono with username '{username}' and password '{password}'", self.verbose)
