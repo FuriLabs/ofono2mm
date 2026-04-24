@@ -57,9 +57,17 @@ class MMModem3gppInterface(ServiceInterface):
             ofono2mm_print("SIM manager is not up yet. cannot set 3gpp props", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
-            ofono2mm_print("SIM is still locked and/or not ready. cannot set 3gpp props", self.verbose)
+        sim_props = self.ofono_interface_props['org.ofono.SimManager']
+        pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
+
+        if pin_required is None:
             return
+
+        if pin_required != 'none':
+            self.props['EnabledFacilityLocks'] = Variant('u', 1) # MM_MODEM_3GPP_FACILITY_SIM
+            return
+
+        self.props['EnabledFacilityLocks'] = Variant('u', 0) # MM_MODEM_3GPP_FACILITY_NONE
 
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
             self.props['OperatorName'] = Variant('s', self.ofono_interface_props['org.ofono.NetworkRegistration']['Name'].value if "Name" in self.ofono_interface_props['org.ofono.NetworkRegistration'].props else '')
@@ -99,28 +107,31 @@ class MMModem3gppInterface(ServiceInterface):
             self.props['OperatorCode'] = Variant('s', '')
             self.props['RegistrationState'] = Variant('u', 4) # unknown MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN
 
-        self.props['Imei'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Serial'].value if 'Serial' in self.ofono_interface_props['org.ofono.Modem'].props else '')
-        self.props['EnabledFacilityLocks'] = Variant('u', 0) # none MM_MODEM_3GPP_FACILITY_NONE
+        if 'org.ofono.Modem' in self.ofono_interface_props:
+            self.props['Imei'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Serial'].value if 'Serial' in self.ofono_interface_props['org.ofono.Modem'].props else '')
+        else:
+            self.props['Imei'] = Variant('s', '')
 
-        try:
-            contexts = await self.ofono_interfaces['org.ofono.ConnectionManager'].call_get_contexts()
-            for ctx in contexts:
-                ctx_type = ctx[1].get('Type', Variant('s', '')).value
-                if ctx_type.lower() == "internet":
-                    apn = ctx[1].get('AccessPointName', Variant('s', '')).value
-                    auth_method = ctx[1].get('AuthenticationMethod', Variant('s', '')).value
+        if 'org.ofono.ConnectionManager' in self.ofono_interfaces:
+            try:
+                contexts = await self.ofono_interfaces['org.ofono.ConnectionManager'].call_get_contexts()
+                for ctx in contexts:
+                    ctx_type = ctx[1].get('Type', Variant('s', '')).value
+                    if ctx_type.lower() == "internet":
+                        apn = ctx[1].get('AccessPointName', Variant('s', '')).value
+                        auth_method = ctx[1].get('AuthenticationMethod', Variant('s', '')).value
 
-                    self.props['InitialEpsBearerSettings'].value['apn'] = Variant('s', f'{apn}')
-                    if auth_method == 'none':
-                        self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 1) # none MM_BEARER_ALLOWED_AUTH_NONE
-                    elif auth_method == 'pap':
-                        self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 2) # pap MM_BEARER_ALLOWED_AUTH_PAP
-                    elif auth_method == 'chap':
-                        self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 3) # chap MM_BEARER_ALLOWED_AUTH_CHAP
-                    else:
-                        self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 0) # unknown MM_BEARER_ALLOWED_AUTH_UNKNOWN
-        except Exception as e:
-            ofono2mm_print(f"Failed to set eps bearer settings: {e}", self.verbose)
+                        self.props['InitialEpsBearerSettings'].value['apn'] = Variant('s', f'{apn}')
+                        if auth_method == 'none':
+                            self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 1) # none MM_BEARER_ALLOWED_AUTH_NONE
+                        elif auth_method == 'pap':
+                            self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 2) # pap MM_BEARER_ALLOWED_AUTH_PAP
+                        elif auth_method == 'chap':
+                            self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 3) # chap MM_BEARER_ALLOWED_AUTH_CHAP
+                        else:
+                            self.props['InitialEpsBearerSettings'].value['allowed-auth'] = Variant('u', 0) # unknown MM_BEARER_ALLOWED_AUTH_UNKNOWN
+            except Exception as e:
+                ofono2mm_print(f"Failed to set eps bearer settings: {e}", self.verbose)
 
         changed_props = {}
         for prop in self.props:
@@ -164,13 +175,15 @@ class MMModem3gppInterface(ServiceInterface):
         ofono_operators = await self.ofono_interfaces['org.ofono.NetworkRegistration'].call_scan()
         for ofono_operator in ofono_operators:
             mm_operator = {}
-            if ofono_operator[1]['Status'].value == "unknown":
+            status = ofono_operator[1].get('Status', Variant('s', 'unknown')).value
+
+            if status == "unknown":
                 mm_operator.update({'status': Variant('u', 0)})
-            if ofono_operator[1]['Status'].value == "available":
+            if status == "available":
                 mm_operator.update({'status': Variant('u', 1)})
-            if ofono_operator[1]['Status'].value == "current":
+            if status == "current":
                 mm_operator.update({'status': Variant('u', 2)})
-            if ofono_operator[1]['Status'].value == "forbidden":
+            if status == "forbidden":
                 mm_operator.update({'status': Variant('u', 3)})
 
             name = ofono_operator[1].get('Name', Variant('s', '')).value
@@ -182,7 +195,8 @@ class MMModem3gppInterface(ServiceInterface):
             mm_operator['operator-code'] = Variant('s', f"{mcc}{mnc}")
 
             current_tech = 0
-            for tech in ofono_operator[1]['Technologies'].value:
+            technologies = ofono_operator[1].get('Technologies', Variant('as', [])).value
+            for tech in technologies:
                 if tech == "nr":
                     current_tech |= 1 << 15
                 elif tech == "lte":
