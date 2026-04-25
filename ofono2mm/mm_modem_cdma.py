@@ -25,7 +25,7 @@ class MMModemCDMAInterface(ServiceInterface):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot perform OTA activation: operation not supported')
 
     @method()
-    def ActivateManuel(self, properties: 'a{sv}') -> 'o':
+    def ActivateManual(self, properties: 'a{sv}'):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot perform manual activation: operation not supported')
 
     @dbus_property(access=PropertyAccess.READ)
@@ -54,4 +54,4 @@ class MMModemCDMAInterface(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def EvdoRegistrationState(self) -> 'u':
-        return self.props['Cdma1xRegistrationState'].value
+        return self.props['EvdoRegistrationState'].value
