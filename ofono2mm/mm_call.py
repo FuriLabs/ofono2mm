@@ -41,18 +41,24 @@ class MMCallInterface(ServiceInterface):
                 new_state = 4 # active MM_CALL_STATE_ACTIVE
                 reason = 3 # accepted MM_CALL_STATE_REASON_ACCEPTED
                 self.props['State'] = Variant('i', new_state)
+                self.props['StateReason'] = Variant('i', reason)
+                self.emit_properties_changed({'State': self.props['State'].value, 'StateReason': self.props['StateReason'].value})
                 self.StateChanged(old_state, new_state, reason)
             elif value.value == "alerting":
                 old_state = self.props['State'].value
                 new_state = 2 # ringing out MM_CALL_STATE_RINGING_OUT
                 reason = 1 # outgoing started MM_CALL_STATE_REASON_OUTGOING_STARTED
                 self.props['State'] = Variant('i', new_state)
+                self.props['StateReason'] = Variant('i', reason)
+                self.emit_properties_changed({'State': self.props['State'].value, 'StateReason': self.props['StateReason'].value})
                 self.StateChanged(old_state, new_state, reason)
             elif value.value == "disconnected":
                 old_state = self.props['State'].value
-                new_state = 4 # terminated MM_CALL_STATE_TERMINATED
-                reason = 7 # terminalted MM_CALL_STATE_REASON_TERMINATED
+                new_state = 7 # terminated MM_CALL_STATE_TERMINATED
+                reason = 4 # terminalted MM_CALL_STATE_REASON_TERMINATED
                 self.props['State'] = Variant('i', new_state)
+                self.props['StateReason'] = Variant('i', reason)
+                self.emit_properties_changed({'State': self.props['State'].value, 'StateReason': self.props['StateReason'].value})
                 self.StateChanged(old_state, new_state, reason)
 
     @method()
@@ -63,6 +69,7 @@ class MMCallInterface(ServiceInterface):
         reason = 1 # outgoing started MM_CALL_STATE_REASON_OUTGOING_STARTED
         self.props['State'] = Variant('i', new_state)
         self.props['StateReason'] = Variant('i', reason)
+        self.emit_properties_changed({'State': self.props['State'].value, 'StateReason': self.props['StateReason'].value})
         self.StateChanged(old_state, new_state, reason)
 
     @method()
@@ -74,6 +81,7 @@ class MMCallInterface(ServiceInterface):
         reason = 3 # outgoing started MM_CALL_STATE_REASON_ACCEPTED
         self.props['State'] = Variant('i', new_state)
         self.props['StateReason'] = Variant('i', reason)
+        self.emit_properties_changed({'State': self.props['State'].value, 'StateReason': self.props['StateReason'].value})
         self.StateChanged(old_state, new_state, reason)
 
     @method()
@@ -83,7 +91,9 @@ class MMCallInterface(ServiceInterface):
         old_state = self.props['State'].value
         new_state = 7 # terminated MM_CALL_STATE_TERMINATED
         reason = 9 # deflected MM_CALL_STATE_REASON_DEFLECTED
+        self.props['State'] = Variant('i', new_state)
         self.props['StateReason'] = Variant('i', reason)
+        self.emit_properties_changed({'State': self.props['State'].value, 'StateReason': self.props['StateReason'].value})
         self.StateChanged(old_state, new_state, reason)
 
     @method()
@@ -91,12 +101,14 @@ class MMCallInterface(ServiceInterface):
         ofono2mm_print("Joining multiparty", self.verbose)
         await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_create_multiparty()
         self.props['Multiparty'] = Variant('b', True)
+        self.emit_properties_changed({'Multiparty': self.props['Multiparty'].value})
 
     @method()
     async def LeaveMultiparty(self):
         ofono2mm_print("Leaving multiparty", self.verbose)
         await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_hangup_multiparty()
         self.props['Multiparty'] = Variant('b', False)
+        self.emit_properties_changed({'Multiparty': self.props['Multiparty'].value})
 
     @method()
     async def Hangup(self):
@@ -114,6 +126,7 @@ class MMCallInterface(ServiceInterface):
         reason = 4 # terminated MM_CALL_STATE_REASON_TERMINATED
         self.props['State'] = Variant('i', new_state)
         self.props['StateReason'] = Variant('i', reason)
+        self.emit_properties_changed({'State': self.props['State'].value, 'StateReason': self.props['StateReason'].value})
         self.StateChanged(old_state, new_state, reason)
 
     @method()
