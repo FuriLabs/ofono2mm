@@ -1,6 +1,6 @@
 from dbus_fast.service import ServiceInterface, method, dbus_property, signal
 from dbus_fast.constants import PropertyAccess
-from dbus_fast import Variant
+from dbus_fast import Variant, DBusError
 
 from ofono2mm.mm_call import MMCallInterface
 from ofono2mm.logging import ofono2mm_print
@@ -22,15 +22,16 @@ class MMModemVoiceInterface(ServiceInterface):
             'EmergencyOnly': Variant('b', False),
         }
         self.call_path_map = {}
+        self.calls = {}
 
     def set_emergency_mode(self):
         prev = self.props['EmergencyOnly'].value
         val = False
         try:
             if 'org.ofono.SimManager' in self.ofono_interface_props:
-                sm = self.ofono_interface_props['org.ofono.SimManager'].props
-                if 'FixedDialing' in sm:
-                    val = bool(sm['FixedDialing'].value)
+                sim_props = self.ofono_interface_props['org.ofono.SimManager']
+                if 'FixedDialing' in sim_props.props:
+                    val = bool(sim_props['FixedDialing'].value)
         except Exception as e:
             ofono2mm_print(f"Failed to check emergency state, defaulting to False: {e}", self.verbose)
             val = False
@@ -61,61 +62,72 @@ class MMModemVoiceInterface(ServiceInterface):
 
         global call_i
 
+        if path in self.call_path_map:
+            ofono2mm_print(f"Call with oFono path {path} already exists", self.verbose)
+            return
+
         self.set_emergency_mode()
 
+        state = props.get('State', Variant('s', '')).value
+        line_identification = props.get('LineIdentification', Variant('s', '')).value
+        multiparty = props.get('Multiparty', Variant('b', False))
+
         object_path = f'/org/freedesktop/ModemManager1/Call/{call_i}'
-        if props['State'].value == 'incoming':
+        if state == 'incoming':
             mm_call_interface = MMCallInterface(self.ofono_client, self.ofono_interfaces, self.verbose)
             mm_call_interface.props.update({
                 'State': Variant('i', 3), # ringing in MM_CALL_STATE_RINGING_IN
                 'StateReason': Variant('i', 2), # incoming new MM_CALL_STATE_REASON_INCOMING_NEW
                 'Direction': Variant('i', 1), # incoming MM_CALL_DIRECTION_INCOMING
-                'Number': Variant('s', props['LineIdentification'].value),
-                'Multiparty': props['Multiparty'],
+                'Number': Variant('s', line_identification),
+                'Multiparty': multiparty,
             })
 
             mm_call_interface.voicecall = path
             mm_call_interface.init_call()
 
             self.bus.export(object_path, mm_call_interface)
+            self.calls[object_path] = mm_call_interface
             self.props['Calls'].value.append(object_path)
             self.call_path_map[path] = object_path
             self.emit_properties_changed({'Calls': self.props['Calls'].value})
             self.CallAdded(object_path)
             call_i += 1
-        elif props['State'].value == 'dialing':
+        elif state == 'dialing':
             mm_call_interface = MMCallInterface(self.ofono_client, self.ofono_interfaces, self.verbose)
             mm_call_interface.props.update({
                 'State': Variant('i', 2),  # ringing out MM_CALL_STATE_RINGING_OUT
                 'StateReason': Variant('i', 0), # unknown MM_CALL_STATE_REASON_UNKNOWN
                 'Direction': Variant('i', 2), # outgoing MM_CALL_DIRECTION_OUTGOING
-                'Number': Variant('s', props['LineIdentification'].value),
+                'Number': Variant('s', line_identification),
             })
 
             mm_call_interface.voicecall = path
             mm_call_interface.init_call()
 
             self.bus.export(object_path, mm_call_interface)
+            self.calls[object_path] = mm_call_interface
             self.props['Calls'].value.append(object_path)
             self.call_path_map[path] = object_path
             self.emit_properties_changed({'Calls': self.props['Calls'].value})
             self.CallAdded(object_path)
             call_i += 1
-        elif props['State'].value == 'alerting':
-            cleaned_number = self.clean_phone_number(props['LineIdentification'].value)
+        elif state == 'alerting':
+            cleaned_number = self.clean_phone_number(line_identification)
             mm_call_interface = MMCallInterface(self.ofono_client, self.ofono_interfaces, self.verbose)
             mm_call_interface.props.update({
                 'State': Variant('i', 2), # ringing out MM_CALL_STATE_RINGING_OUT
                 'StateReason': Variant('i', 1), # outgoing started MM_CALL_STATE_REASON_OUTGOING_STARTED
                 'Direction': Variant('i', 2), # outgoing MM_CALL_DIRECTION_OUTGOING
                 'Number': Variant('s', cleaned_number),
-                'Multiparty': props['Multiparty'],
+                'Multiparty': multiparty,
             })
 
             mm_call_interface.voicecall = path
             mm_call_interface.init_call()
 
             self.bus.export(object_path, mm_call_interface)
+            self.calls[object_path] = mm_call_interface
             self.props['Calls'].value.append(object_path)
             self.call_path_map[path] = object_path
             self.emit_properties_changed({'Calls': self.props['Calls'].value})
@@ -129,6 +141,7 @@ class MMModemVoiceInterface(ServiceInterface):
             mm_path = self.call_path_map[path]
             self.props['Calls'].value.remove(mm_path)
             self.bus.unexport(mm_path)
+            self.calls.pop(mm_path, None)
             del self.call_path_map[path]
             self.emit_properties_changed({'Calls': self.props['Calls'].value})
             self.CallDeleted(mm_path)
@@ -149,12 +162,16 @@ class MMModemVoiceInterface(ServiceInterface):
         ofono2mm_print(f"Deleting call with object path {path}", self.verbose)
 
         if path in self.props['Calls'].value:
+            if 'org.ofono.VoiceCallManager' not in self.ofono_interfaces:
+                raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'VoiceCallManager is not available')
+
             await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_hangup_all()
             self.props['Calls'].value.remove(path)
             ofono_path = next((k for k, v in self.call_path_map.items() if v == path), None)
             if ofono_path:
                 del self.call_path_map[ofono_path]
             self.bus.unexport(path)
+            self.calls.pop(path, None)
             self.emit_properties_changed({'Calls': self.props['Calls'].value})
             self.CallDeleted(path)
 
@@ -166,28 +183,36 @@ class MMModemVoiceInterface(ServiceInterface):
 
         global call_i
 
+        if 'number' not in properties:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.InvalidArgs', "Property 'number' is required")
+
+        if 'org.ofono.VoiceCallManager' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'VoiceCallManager is not available')
+
         self.set_emergency_mode()
+
+        object_path = f'/org/freedesktop/ModemManager1/Call/{call_i}'
+        number = properties['number'].value
+
+        try:
+            path = await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_dial(number, "")
+        except Exception as e:
+            ofono2mm_print(f"Failed to dial: {e}", self.verbose)
+            return object_path # CallAdded should take care of the rest on false failures? kind of a hack but it works ¯\_(ツ)_/¯
 
         mm_call_interface = MMCallInterface(self.ofono_client, self.ofono_interfaces, self.verbose)
         mm_call_interface.props.update({
             'State': Variant('i', 2), # ringing out MM_CALL_STATE_RINGING_OUT
             'StateReason': Variant('i', 1), # outgoing started MM_CALL_STATE_REASON_OUTGOING_STARTED
             'Direction': Variant('i', 2), # outgoing MM_CALL_DIRECTION_OUTGOING
-            'Number': Variant('s', properties['number'].value),
+            'Number': Variant('s', number),
         })
-
-        object_path = f'/org/freedesktop/ModemManager1/Call/{call_i}'
-
-        try:
-            path = await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_dial(properties['number'].value, "")
-        except Exception as e:
-            ofono2mm_print(f"Failed to dial: {e}", self.verbose)
-            return object_path # CallAdded should take care of the rest on false failures? kind of a hack but it works ¯\_(ツ)_/¯
 
         mm_call_interface.voicecall = path
         mm_call_interface.init_call()
 
         self.bus.export(object_path, mm_call_interface)
+        self.calls[object_path] = mm_call_interface
         self.props['Calls'].value.append(object_path)
         self.call_path_map[path] = object_path
         self.emit_properties_changed({'Calls': self.props['Calls'].value})
@@ -199,32 +224,45 @@ class MMModemVoiceInterface(ServiceInterface):
     @method()
     async def HoldAndAccept(self):
         ofono2mm_print("Holding and accepting call", self.verbose)
+        if 'org.ofono.VoiceCallManager' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'VoiceCallManager is not available')
         await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_hold_and_answer()
 
     @method()
     async def HangupAndAccept(self):
         ofono2mm_print("Hanging up and accepting call", self.verbose)
+        if 'org.ofono.VoiceCallManager' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'VoiceCallManager is not available')
         await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_release_and_answer()
 
     @method()
     async def HangupAll(self):
         ofono2mm_print("Hanging up all calls", self.verbose)
+        if 'org.ofono.VoiceCallManager' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'VoiceCallManager is not available')
         await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_hangup_all()
 
     @method()
     async def Transfer(self):
-        ofono2mm_print("Transfering call", self.verbose)
+        ofono2mm_print("Transferring call", self.verbose)
+        if 'org.ofono.VoiceCallManager' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'VoiceCallManager is not available')
         await self.ofono_interfaces['org.ofono.VoiceCallManager'].call_transfer()
 
     @method()
     async def CallWaitingSetup(self, enable: 'b'):
         ofono2mm_print(f"Activate call waiting network: {enable}", self.verbose)
+        if 'org.ofono.CallSettings' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'CallSettings is not available')
         status = 'enabled' if enable else 'disabled'
         await self.ofono_interfaces['org.ofono.CallSettings'].call_set_property('VoiceCallWaiting', Variant('s', status))
 
     @method()
     async def CallWaitingQuery(self) -> 'b':
         ofono2mm_print("Query the status of call waiting network", self.verbose)
+
+        if 'org.ofono.CallSettings' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'CallSettings is not available')
 
         enabled = False
         props = await self.ofono_interfaces['org.ofono.CallSettings'].call_get_properties()
