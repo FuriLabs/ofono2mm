@@ -34,8 +34,9 @@ class MMModemOmaInterface(ServiceInterface):
         raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot cancel OMA session: operation not supported')
 
     @signal()
-    def SessionStateChanged(self, old_session_state: 'i', new_session_state: 'i', session_state_failed_reason: 'u'):
-        ofono2mm_print(f"Signal: Session state changed with old sttate {old_session_state} and new state {new_session_state}. failed reason (if any): {session_state_failed_reason}", self.verbose)
+    def SessionStateChanged(self, old_session_state: 'i', new_session_state: 'i', session_state_failed_reason: 'u') -> 'iiu':
+        ofono2mm_print(f"Signal: Session state changed with old state {old_session_state} and new state {new_session_state}. failed reason (if any): {session_state_failed_reason}", self.verbose)
+        return [old_session_state, new_session_state, session_state_failed_reason]
 
     @dbus_property(access=PropertyAccess.READ)
     def Features(self) -> 'u':
