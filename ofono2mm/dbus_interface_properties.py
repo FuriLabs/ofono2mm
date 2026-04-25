@@ -1,4 +1,5 @@
 from typing import Dict, List, Callable
+from dbus_fast import Variant
 from ofono2mm.logging import ofono2mm_print
 import asyncio
 
