@@ -1,5 +1,7 @@
 import asyncio
 
+from copy import deepcopy
+
 from dbus_fast.service import ServiceInterface, method, dbus_property
 from dbus_fast.constants import PropertyAccess
 from dbus_fast import Variant, DBusError
@@ -47,23 +49,31 @@ class MMModemSignalInterface(ServiceInterface):
     async def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
 
+        if self.is_busy:
+            return
+
         if 'org.ofono.SimManager' in self.ofono_interface_props and 'Present' in self.ofono_interface_props['org.ofono.SimManager'].props:
-            if not self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
+            sim_props = self.ofono_interface_props['org.ofono.SimManager']
+            if not sim_props['Present'].value:
                 ofono2mm_print("SIM is not present. no need to set signal props", self.verbose)
                 return
         else:
             ofono2mm_print("SIM manager is not up yet. cannot set signal props", self.verbose)
             return
 
-        if not (not 'PinRequired' in self.ofono_interface_props['org.ofono.SimManager'].props or self.ofono_interface_props['org.ofono.SimManager']['PinRequired'].value == 'none'):
+        pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
+        if pin_required is None:
+            return
+
+        if pin_required != 'none':
             ofono2mm_print("SIM is still locked and/or not ready. cannot set signal props", self.verbose)
             return
 
-        if 'org.ofono.NetworkMonitor' in self.ofono_interfaces and not self.is_busy:
+        if 'org.ofono.NetworkMonitor' in self.ofono_interfaces:
             self.is_busy = True
-            old_props = self.props.copy()
+            old_props = deepcopy(self.props)
 
-            cellinfo = []
+            cellinfo = {}
             try:
                 cellinfo = await self.ofono_interfaces['org.ofono.NetworkMonitor'].call_get_serving_cell_information()
             except Exception as e:
@@ -71,23 +81,27 @@ class MMModemSignalInterface(ServiceInterface):
             finally:
                 self.is_busy = False
 
-            if 'Technology' in cellinfo:
-                if cellinfo['Technology'].value == 'nr':
-                    self.props['Nr5g'].value['rssi'] = Variant('d', cellinfo['ChannelQualityIndicator'].value if "ChannelQualityIndicator" in cellinfo else 0)
-                    self.props['Nr5g'].value['rsrq'] = Variant('d', cellinfo['ReferenceSignalReceivedQuality'].value if "ReferenceSignalReceivedQuality" in cellinfo else 0)
-                    self.props['Nr5g'].value['rsrp'] = Variant('d', cellinfo['ReferenceSignalReceivedPower'].value if "ReferenceSignalReceivedPower" in cellinfo else 0)
-                if cellinfo['Technology'].value == 'lte':
-                    self.props['Lte'].value['rssi'] = Variant('d', cellinfo['ChannelQualityIndicator'].value if "ChannelQualityIndicator" in cellinfo else 0)
-                    self.props['Lte'].value['rsrq'] = Variant('d', cellinfo['ReferenceSignalReceivedQuality'].value if "ReferenceSignalReceivedQuality" in cellinfo else 0)
-                    self.props['Lte'].value['rsrp'] = Variant('d', cellinfo['ReferenceSignalReceivedPower'].value if "ReferenceSignalReceivedPower" in cellinfo else 0)
-                if cellinfo['Technology'].value == 'umts':
-                    self.props['Umts'].value['rscp'] = Variant('d', cellinfo['ReceivedSignalCodePower'].value if "ReceivedSignalCodePower" in cellinfo else 0)
-                if cellinfo['Technology'].value == 'gsm':
-                    self.props['Gsm'].value['error-rate'] = Variant('d', cellinfo['BitErrorRate'].value if "BitErrorRate" in cellinfo else 0)
+            tech = cellinfo.get('Technology', Variant('s', '')).value
+            if tech == 'nr':
+                self.props['Nr5g'].value['rssi'] = Variant('d', cellinfo.get('ChannelQualityIndicator', Variant('d', 0)).value)
+                self.props['Nr5g'].value['rsrq'] = Variant('d', cellinfo.get('ReferenceSignalReceivedQuality', Variant('d', 0)).value)
+                self.props['Nr5g'].value['rsrp'] = Variant('d', cellinfo.get('ReferenceSignalReceivedPower', Variant('d', 0)).value)
+            elif tech == 'lte':
+                self.props['Lte'].value['rssi'] = Variant('d', cellinfo.get('ChannelQualityIndicator', Variant('d', 0)).value)
+                self.props['Lte'].value['rsrq'] = Variant('d', cellinfo.get('ReferenceSignalReceivedQuality', Variant('d', 0)).value)
+                self.props['Lte'].value['rsrp'] = Variant('d', cellinfo.get('ReferenceSignalReceivedPower', Variant('d', 0)).value)
+            elif tech == 'umts':
+                self.props['Umts'].value['rscp'] = Variant('d', cellinfo.get('ReceivedSignalCodePower', Variant('d', 0)).value)
+            elif tech == 'gsm':
+                self.props['Gsm'].value['error-rate'] = Variant('d', cellinfo.get('BitErrorRate', Variant('d', 0)).value)
 
+            changed_props = {}
             for prop in self.props:
                 if self.props[prop].value != old_props[prop].value:
-                    self.emit_properties_changed({prop: self.props[prop].value})
+                    changed_props.update({ prop: self.props[prop].value })
+
+            if changed_props:
+                self.emit_properties_changed(changed_props)
 
     @method()
     def Setup(self, rate: 'u'):
