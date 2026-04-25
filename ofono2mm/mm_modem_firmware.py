@@ -13,6 +13,7 @@ class MMModemFirmwareInterface(ServiceInterface):
         ofono2mm_print("Initializing Firmware interface", verbose)
         self.mm_modem = mm_modem
         self.verbose = verbose
+        self.hardware_revision = Variant('s', '')
 
         self.props = {
             'UpdateSettings': Variant('(ua{sv})', [0, {
@@ -33,9 +34,13 @@ class MMModemFirmwareInterface(ServiceInterface):
             'version': self.hardware_revision
         }])
 
+        changed_props = {}
         for prop in self.props:
             if self.props[prop].value != old_props[prop].value:
-                self.emit_properties_changed({prop: self.props[prop].value})
+                changed_props.update({ prop: self.props[prop].value })
+
+        if changed_props:
+            self.emit_properties_changed(changed_props)
 
     @dbus_property(access=PropertyAccess.READ)
     def UpdateSettings(self) -> '(ua{sv})':
