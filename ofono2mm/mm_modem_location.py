@@ -67,8 +67,8 @@ def on_timeout(_user_data):
 def _geoclue_process_func(queue):
     global simple, main_loop, location_data, verbose
 
-    seteuid(32011)
     try:
+        seteuid(32011)
         GLib.timeout_add_seconds(30, on_timeout, None)
 
         Geoclue.Simple.new_with_thresholds("ModemManager",
@@ -143,7 +143,7 @@ class MMModemLocationInterface(ServiceInterface):
         }
 
         self.props = {
-            'Capabilities': Variant('u', 1), # hardcoded dummy value 3gpp location area code and cell id MM_MODEM_LOCATION_SOURCE_3GPP_LAC_CI
+            'Capabilities': Variant('u', 2), # hardcoded dummy value raw MM_MODEM_LOCATION_SOURCE_GPS_RAW
             'SupportedAssistanceData': Variant('u', 0), # hardcoded dummy value none MM_MODEM_LOCATION_ASSISTANCE_DATA_TYPE_NONE
             'Enabled': Variant('u', 2), # hardcoded dummy value raw MM_MODEM_LOCATION_SOURCE_GPS_RAW
             'SignalsLocation': Variant('b', False),
@@ -157,8 +157,10 @@ class MMModemLocationInterface(ServiceInterface):
         ofono2mm_print(f"Setup location with source flag {sources} and signal location {signal_location}", self.verbose)
         self.props['Enabled'] = Variant('u', sources)
         self.props['SignalsLocation'] = Variant('b', signal_location)
-        self.emit_properties_changed({'Enabled': self.props['Enabled'].value})
-        self.emit_properties_changed({'SignalsLocation': self.props['SignalsLocation'].value})
+        self.emit_properties_changed({
+            'Enabled': self.props['Enabled'].value,
+            'SignalsLocation': self.props['SignalsLocation'].value
+        })
 
     @method()
     async def GetLocation(self) -> 'a{uv}':
@@ -206,15 +208,16 @@ supl-server={supl}
 
         try:
             chown(self.config_dir, self.owner_uid, self.owner_gid)
+            chown(self.config_path, self.owner_uid, self.owner_gid)
         except OSError as e:
-            raise DBusError('org.freedesktop.ModemManager1.Error.Core.Failed', f'Failed to change ownership of configuration directory: {e}')
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.Failed', f'Failed to change ownership of configuration: {e}')
 
         self.props['SuplServer'] = Variant('s', supl)
         self.emit_properties_changed({'SuplServer': self.props['SuplServer'].value})
 
     @method()
     def InjectAssistanceData(self, data: 'ay') -> None:
-        raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot inject assistance data: ununsupported')
+        raise DBusError('org.freedesktop.ModemManager1.Error.Core.Unsupported', 'Cannot inject assistance data: unsupported')
 
     @method()
     def SetGpsRefreshRate(self, rate: 'u') -> None:
