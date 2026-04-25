@@ -30,12 +30,12 @@ class MMModemTimeInterface(ServiceInterface):
 
     def update_time(self, time):
         ofono2mm_print(f"Updating time to {time}", self.verbose)
-        utc_time = time['UTC'].value
+        utc_time = time.get('UTC', Variant('q', 0)).value
         network_time = datetime.fromtimestamp(utc_time, tz=timezone.utc)
         self.network_time = network_time.isoformat()
 
-        timezone_offset = time['Timezone'].value // 60
-        dst_offset = time['DST'].value // 60
+        timezone_offset = time.get('Timezone', Variant('i', 0)).value // 60
+        dst_offset = time.get('DST', Variant('i', 0)).value // 60
 
         self.update_network_timezone(timezone_offset, dst_offset, 0)
 
@@ -56,8 +56,8 @@ class MMModemTimeInterface(ServiceInterface):
                 network_time = datetime.fromtimestamp(utc_time, tz=timezone.utc)
                 self.network_time = network_time.isoformat()
 
-                timezone_offset = output['Timezone'].value // 60
-                dst_offset = output['DST'].value // 60
+                timezone_offset = output.get('Timezone', Variant('i', 0)).value // 60
+                dst_offset = output.get('DST', Variant('i', 0)).value // 60
 
                 self.update_network_timezone(timezone_offset, dst_offset, 0)
             else:
@@ -83,4 +83,5 @@ class MMModemTimeInterface(ServiceInterface):
             'leap-seconds': Variant('i', leap_seconds)
         }
 
+        self.emit_properties_changed({'NetworkTimezone': self.network_timezone})
         self.NetworkTimeChanged(self.network_time)
