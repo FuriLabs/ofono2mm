@@ -15,6 +15,7 @@ class MMModemCellBroadcastInterface(ServiceInterface):
         self.bus = bus
         self.ofono_interfaces = ofono_interfaces
         self.verbose = verbose
+        self.cbms = {}
         self.props = {
             'CellBroadcasts': Variant('ao', []),
             'Channels': Variant('a(uu)', [[0, 0]])
@@ -45,6 +46,7 @@ class MMModemCellBroadcastInterface(ServiceInterface):
 
         object_path = f'/org/freedesktop/ModemManager1/CBM/{cbm_i}'
         self.bus.export(object_path, mm_cbm_interface)
+        self.cbms[object_path] = mm_cbm_interface
         self.props['CellBroadcasts'].value.append(object_path)
         self.emit_properties_changed({'CellBroadcasts': self.props['CellBroadcasts'].value})
         self.Added(object_path)
@@ -61,6 +63,7 @@ class MMModemCellBroadcastInterface(ServiceInterface):
 
         object_path = f'/org/freedesktop/ModemManager1/CBM/{cbm_i}'
         self.bus.export(object_path, mm_cbm_interface)
+        self.cbms[object_path] = mm_cbm_interface
         self.props['CellBroadcasts'].value.append(object_path)
         self.emit_properties_changed({'CellBroadcasts': self.props['CellBroadcasts'].value})
         self.Added(object_path)
@@ -78,6 +81,7 @@ class MMModemCellBroadcastInterface(ServiceInterface):
         if path in self.props['CellBroadcasts'].value:
             self.props['CellBroadcasts'].value.remove(path)
             self.bus.unexport(path)
+            self.cbms.pop(path, None)
             self.emit_properties_changed({'CellBroadcasts': self.props['CellBroadcasts'].value})
             self.Deleted(path)
         else:
@@ -86,14 +90,14 @@ class MMModemCellBroadcastInterface(ServiceInterface):
     @method()
     def SetChannels(self, channels: 'a(uu)'):
         ofono2mm_print(f"Setting channels to {channels}", self.verbose)
-        old_channels = self.props['Channels'].value
+        old_channels = list(self.props['Channels'].value)
         self.props['Channels'] = Variant('a(uu)', channels)
 
         if old_channels != channels:
             self.emit_properties_changed({'Channels': self.props['Channels'].value})
 
     @signal()
-    def Added(self, path) -> 's':
+    def Added(self, path) -> 'o':
         ofono2mm_print(f"Signal: Cell broadcast message added with object path {path}", self.verbose)
         return path
 
