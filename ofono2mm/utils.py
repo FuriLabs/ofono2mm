@@ -40,8 +40,7 @@ def async_retryable(times=0):
     return decorator
 
 def save_setting(key, value):
-    if not exists(settings_dir):
-        makedirs(settings_dir)
+    makedirs(settings_dir, exist_ok=True)
 
     settings = parse_settings()
 
@@ -62,5 +61,5 @@ def parse_settings():
             for line in file:
                 if ':' in line:
                     k, v = line.strip().split(':', 1)
-                    settings[k] = v
+                    settings[k] = v.strip()
     return settings
