@@ -31,12 +31,7 @@ class MMModem3gppProfileManagerInterface(ServiceInterface):
     @method()
     def List(self) -> 'aa{sv}':
         ofono2mm_print("Returning list of profiles", self.verbose)
-        properties = {}
-        for key, value in self.props.items():
-            if key != "roaming-allowance":
-                properties[key] = value
-
-        return [properties]
+        return [dict(self.props)]
 
     @method()
     async def Set(self, requested_properties: 'a{sv}') -> 'a{sv}':
@@ -54,8 +49,11 @@ class MMModem3gppProfileManagerInterface(ServiceInterface):
         if "roaming-allowance" in requested_properties:
             roaming_value_variant = requested_properties["roaming-allowance"]
             roaming_allowed = roaming_value_variant.value != 0
-            ofono_interface = self.ofono_client["ofono_modem"][self.modem_name]['org.ofono.ConnectionManager']
-            await ofono_interface.call_set_property("RoamingAllowed", Variant('b', roaming_allowed))
+            try:
+                ofono_interface = self.ofono_client["ofono_modem"][self.modem_name]['org.ofono.ConnectionManager']
+                await ofono_interface.call_set_property("RoamingAllowed", Variant('b', roaming_allowed))
+            except Exception as e:
+                ofono2mm_print(f"Failed to set roaming allowance: {e}", self.verbose)
 
         return stored_properties
 
@@ -63,7 +61,7 @@ class MMModem3gppProfileManagerInterface(ServiceInterface):
     def Delete(self, properties: 'a{sv}'):
         ofono2mm_print(f"Deleting profile with properties {properties}", self.verbose)
 
-        for key in properties.items():
+        for key in properties:
             if key in self.props:
                 del self.props[key]
 
