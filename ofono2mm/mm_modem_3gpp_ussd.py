@@ -33,6 +33,9 @@ class MMModem3gppUssdInterface(ServiceInterface):
     async def Initiate(self, command: 's') -> 's':
         ofono2mm_print(f"Initiating USSD with command {command}", self.verbose)
 
+        if 'org.ofono.SupplementaryServices' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'Supplementary services are not available')
+
         if self.props['State'].value in (2, 3): # 2: active, 3: user-response
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'Cannot initiate USSD: a session is already active')
 
@@ -44,6 +47,9 @@ class MMModem3gppUssdInterface(ServiceInterface):
     @method()
     async def Respond(self, response: 's') -> 's':
         ofono2mm_print(f"Respond to 3GPP with command {response}", self.verbose)
+
+        if 'org.ofono.SupplementaryServices' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'Supplementary services are not available')
 
         if self.props['State'].value in (1, 2): # 1: idle, 2: active
             raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'Cannot respond USSD: no active session')
@@ -66,6 +72,9 @@ class MMModem3gppUssdInterface(ServiceInterface):
     async def Cancel(self):
         ofono2mm_print("Cancelling USSD request", self.verbose)
 
+        if 'org.ofono.SupplementaryServices' not in self.ofono_interfaces:
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.WrongState', 'Supplementary services are not available')
+
         try:
             await self.ofono_interfaces['org.ofono.SupplementaryServices'].call_cancel()
         except DBusError as e:
@@ -75,7 +84,7 @@ class MMModem3gppUssdInterface(ServiceInterface):
             ofono2mm_print(f"Failed to cancel USSD: {e}", self.verbose)
 
     @dbus_property(access=PropertyAccess.READ)
-    async def State(self) -> 'u':
+    def State(self) -> 'u':
         return self.props['State'].value
 
     def save_notification_received(self, message):
@@ -93,10 +102,10 @@ class MMModem3gppUssdInterface(ServiceInterface):
         self.emit_properties_changed({'NetworkRequest': self.props['NetworkRequest'].value})
 
     @dbus_property(access=PropertyAccess.READ)
-    async def NetworkRequest(self) -> 's':
+    def NetworkRequest(self) -> 's':
         return self.props['NetworkRequest'].value
 
-    async def property_changed(self, prop, value):
+    def property_changed(self, prop, value):
         ofono2mm_print(f"Property changed: {prop}: {value.value}", self.verbose)
         if prop == "State":
             if value.value == 'idle':
