@@ -1,7 +1,7 @@
 from dbus_fast.service import (ServiceInterface,
                                method, dbus_property, signal)
 from dbus_fast.constants import PropertyAccess
-from dbus_fast import Variant
+from dbus_fast import Variant, DBusError
 
 from ofono2mm.mm_sms import MMSmsInterface
 from ofono2mm.logging import ofono2mm_print
@@ -16,6 +16,7 @@ class MMModemMessagingInterface(ServiceInterface):
         self.bus = bus
         self.ofono_interfaces = ofono_interfaces
         self.verbose = verbose
+        self.messages = {}
         self.props = {
             'Messages': Variant('ao', []),
             'SupportedStorages': Variant('au', []),
@@ -39,13 +40,14 @@ class MMModemMessagingInterface(ServiceInterface):
         mm_sms_interface.props.update({
             'State': Variant('u', 3), # hardcoded value received MM_SMS_STATE_RECEIVED
             'PduType': Variant('u', 1), # hardcoded value deliver MM_SMS_PDU_TYPE_DELIVER
-            'Number': props['Sender'],
+            'Number': props.get('Sender', Variant('s', '')),
             'Text': Variant('s', msg),
-            'Timestamp': props['SentTime']
+            'Timestamp': props.get('SentTime', Variant('s', ''))
         })
 
         object_path = f'/org/freedesktop/ModemManager1/SMS/{message_i}'
         self.bus.export(object_path, mm_sms_interface)
+        self.messages[object_path] = mm_sms_interface
         self.props['Messages'].value.append(object_path)
         self.emit_properties_changed({'Messages': self.props['Messages'].value})
         self.Added(object_path, True)
@@ -63,6 +65,7 @@ class MMModemMessagingInterface(ServiceInterface):
         if path in self.props['Messages'].value:
             self.props['Messages'].value.remove(path)
             self.bus.unexport(path)
+            self.messages.pop(path, None)
             self.emit_properties_changed({'Messages': self.props['Messages'].value})
             self.Deleted(path)
         else:
@@ -74,8 +77,7 @@ class MMModemMessagingInterface(ServiceInterface):
 
         global message_i
         if 'number' not in properties or 'text' not in properties:
-            ofono2mm_print("Properties 'number' or 'text' are not available in properties", self.verbose)
-            return
+            raise DBusError('org.freedesktop.ModemManager1.Error.Core.InvalidArgs', "Properties 'number' and 'text' are required")
 
         mm_sms_interface = MMSmsInterface(self.verbose)
         mm_sms_interface.props.update({
@@ -86,9 +88,10 @@ class MMModemMessagingInterface(ServiceInterface):
 
         object_path = f'/org/freedesktop/ModemManager1/SMS/{message_i}'
         self.bus.export(object_path, mm_sms_interface)
+        self.messages[object_path] = mm_sms_interface
         self.props['Messages'].value.append(object_path)
         self.emit_properties_changed({'Messages': self.props['Messages'].value})
-        self.Added(object_path, True)
+        self.Added(object_path, False)
         message_i += 1
 
         if 'org.ofono.MessageManager' in self.ofono_interfaces:
