@@ -1,6 +1,6 @@
 from dbus_fast.service import ServiceInterface, method, dbus_property, signal
 from dbus_fast.constants import PropertyAccess
-from dbus_fast import Variant
+from dbus_fast import Variant, DBusError
 
 from ofono2mm.mm_cbm import MMCbmInterface
 from ofono2mm.logging import ofono2mm_print
@@ -18,8 +18,61 @@ class MMModemCellBroadcastInterface(ServiceInterface):
         self.cbms = {}
         self.props = {
             'CellBroadcasts': Variant('ao', []),
-            'Channels': Variant('a(uu)', [[0, 0]])
+            'Channels': Variant('a(uu)', [])
         }
+
+    def topics_to_channels(self, topics):
+        channels = []
+
+        if not topics:
+            return channels
+
+        for part in topics.split(','):
+            part = part.strip()
+            if not part:
+                continue
+
+            try:
+                if '-' in part:
+                    start, end = part.split('-', 1)
+                    start = int(start)
+                    end = int(end)
+                    channels.append((start, end))
+                else:
+                    topic = int(part)
+                    channels.append((topic, topic))
+            except Exception as e:
+                ofono2mm_print(f"Failed to parse topic '{part}': {e}", self.verbose)
+
+        return channels
+
+    def channels_to_topics(self, channels):
+        topics = []
+
+        for start, end in channels:
+            start = int(start)
+            end = int(end)
+
+            if start == end:
+                topics.append(str(start))
+            else:
+                topics.append(f"{start}-{end}")
+
+        return ",".join(topics)
+
+    def validate_channels(self, channels):
+        for start, end in channels:
+            start = int(start)
+            end = int(end)
+
+            if start > end:
+                raise DBusError('org.freedesktop.ModemManager1.Error.Core.InvalidArgs', f"Invalid channel range {start}-{end}: start is greater than end")
+
+            if start < 0 or end < 0:
+                raise DBusError('org.freedesktop.ModemManager1.Error.Core.InvalidArgs', f"Invalid channel range {start}-{end}: channels cannot be negative")
+
+            if start > 65535 or end > 65535:
+                raise DBusError('org.freedesktop.ModemManager1.Error.Core.InvalidArgs', f"Invalid channel range {start}-{end}: channels must fit uint16")
 
     async def init_cbs(self):
         ofono2mm_print("Initializing signals", self.verbose)
@@ -27,12 +80,48 @@ class MMModemCellBroadcastInterface(ServiceInterface):
         if 'org.ofono.CellBroadcast' in self.ofono_interfaces:
             self.ofono_interfaces['org.ofono.CellBroadcast'].on_incoming_broadcast(self.add_incoming_broadcast)
             self.ofono_interfaces['org.ofono.CellBroadcast'].on_emergency_broadcast(self.add_emergency_broadcast)
+            self.ofono_interfaces['org.ofono.CellBroadcast'].on_property_changed(self.property_changed)
+
             try:
                 await self.ofono_interfaces['org.ofono.CellBroadcast'].call_set_property('Powered', Variant('b', True))
             except Exception as e:
                 ofono2mm_print(f"Failed to set org.ofono.CellBroadcast Powered to True: {e}", self.verbose)
+
+            try:
+                props = await self.ofono_interfaces['org.ofono.CellBroadcast'].call_get_properties()
+                topics = props.get('Topics', Variant('s', '')).value
+                channels = self.topics_to_channels(topics)
+                self.validate_channels(channels)
+
+                old_channels = list(self.props['Channels'].value)
+                self.props['Channels'] = Variant('a(uu)', channels)
+
+                if old_channels != channels:
+                    self.emit_properties_changed({'Channels': self.props['Channels'].value})
+
+                ofono2mm_print(f"Topics '{topics}' mapped to Channels {channels}", self.verbose)
+            except Exception as e:
+                ofono2mm_print(f"Failed to read Topics: {e}", self.verbose)
         else:
             ofono2mm_print("org.ofono.CellBroadcast was not available when initializing cell broadcast", self.verbose)
+
+    def property_changed(self, prop, value):
+        ofono2mm_print(f"oFono CellBroadcast property changed: {prop}: {value.value}", self.verbose)
+
+        if prop == 'Topics':
+            channels = self.topics_to_channels(value.value)
+
+            try:
+                self.validate_channels(channels)
+            except Exception as e:
+                ofono2mm_print(f"Invalid Topics from oFono '{value.value}': {e}", self.verbose)
+                return
+
+            old_channels = list(self.props['Channels'].value)
+            self.props['Channels'] = Variant('a(uu)', channels)
+
+            if old_channels != channels:
+                self.emit_properties_changed({'Channels': self.props['Channels'].value})
 
     def add_incoming_broadcast(self, text, topic):
         ofono2mm_print(f"Add incoming broadcast text: {text}, topic: {topic}", self.verbose)
@@ -88,13 +177,26 @@ class MMModemCellBroadcastInterface(ServiceInterface):
             ofono2mm_print(f"{path} is not a valid object path", self.verbose)
 
     @method()
-    def SetChannels(self, channels: 'a(uu)'):
+    async def SetChannels(self, channels: 'a(uu)'):
         ofono2mm_print(f"Setting channels to {channels}", self.verbose)
-        old_channels = list(self.props['Channels'].value)
-        self.props['Channels'] = Variant('a(uu)', channels)
 
-        if old_channels != channels:
+        normalized_channels = [(int(start), int(end)) for start, end in channels]
+        self.validate_channels(normalized_channels)
+
+        old_channels = list(self.props['Channels'].value)
+        self.props['Channels'] = Variant('a(uu)', normalized_channels)
+
+        if old_channels != normalized_channels:
             self.emit_properties_changed({'Channels': self.props['Channels'].value})
+
+        if 'org.ofono.CellBroadcast' in self.ofono_interfaces:
+            topics = self.channels_to_topics(normalized_channels)
+
+            try:
+                await self.ofono_interfaces['org.ofono.CellBroadcast'].call_set_property('Topics', Variant('s', topics))
+            except Exception as e:
+                ofono2mm_print(f"Failed to set Topics '{topics}': {e}", self.verbose)
+                raise DBusError('org.freedesktop.ModemManager1.Error.Core.Failed', f"Failed to set cell broadcast channels: {e}")
 
     @signal()
     def Added(self, path) -> 'o':
