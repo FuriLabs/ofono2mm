@@ -259,13 +259,21 @@ async def main():
 
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
     loop = asyncio.get_running_loop()
+
     mm_manager_interface = MMInterface(loop, bus, verbose=verbose)
+
     bus.export('/org/freedesktop/ModemManager1', mm_manager_interface)
 
     try:
+        await bus.request_name('org.freedesktop.ModemManager1')
+    except Exception as e:
+        ofono2mm_print(f"Failed to request org.freedesktop.ModemManager1 bus name: {e}", verbose)
+        return
+
+    try:
         await bus.wait_for_disconnect()
-    except:
-        print("System bus disconnected, exiting")
+    except Exception as e:
+        print(f"System bus disconnected, exiting: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
