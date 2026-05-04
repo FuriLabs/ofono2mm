@@ -62,10 +62,7 @@ class MMModemSignalInterface(ServiceInterface):
             return
 
         pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
-        if pin_required is None:
-            return
-
-        if pin_required != 'none':
+        if pin_required is not None and pin_required != 'none':
             ofono2mm_print("SIM is still locked and/or not ready. cannot set signal props", self.verbose)
             return
 

@@ -436,10 +436,7 @@ class MMModemInterface(ServiceInterface):
             return
 
         pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
-        if pin_required is None:
-            return
-
-        if pin_required != 'none':
+        if pin_required is not None and pin_required != 'none':
             ofono2mm_print("SIM is still locked and/or not ready. cannot check ofono contexts", self.verbose)
             return
 
@@ -721,9 +718,7 @@ class MMModemInterface(ServiceInterface):
                 if self.ofono_interface_props['org.ofono.SimManager']['Present'].value:
                     sim_props = self.ofono_interface_props['org.ofono.SimManager']
                     pin_required = sim_props['PinRequired'].value if 'PinRequired' in sim_props.props else None
-                    if pin_required is None:
-                        self.props['State'] = Variant('i', -1) # state unknown
-                    elif pin_required == 'none':
+                    if pin_required is None or pin_required == 'none':
                         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
                         if self.ofono_interface_props['org.ofono.Modem']['Online'].value:
                             if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
@@ -744,7 +739,7 @@ class MMModemInterface(ServiceInterface):
                             self.props['State'] = Variant('i', 3) # modem is disabled MM_MODEM_STATE_DISABLED
 
                         self.props['UnlockRequired'] = Variant('u', 1) # modem is unlocked MM_MODEM_LOCK_NONE
-                    elif pin_required != 'none':
+                    else:
                         self.props['UnlockRequired'] = Variant('u', 2) # modem needs a pin MM_MODEM_LOCK_SIM_PIN
                         self.props['State'] = Variant('i', 2) # modem is locked MM_MODEM_STATE_LOCKED
                         self.locked = True

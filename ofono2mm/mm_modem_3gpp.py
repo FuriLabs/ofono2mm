@@ -65,10 +65,7 @@ class MMModem3gppInterface(ServiceInterface):
         else:
             self.props['EnabledFacilityLocks'] = Variant('u', 0) # MM_MODEM_3GPP_FACILITY_NONE
 
-        if pin_required is None:
-            return
-
-        if pin_required != 'none':
+        if pin_required is not None and pin_required != 'none':
             return
 
         if 'org.ofono.NetworkRegistration' in self.ofono_interface_props:
