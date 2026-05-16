@@ -3,8 +3,6 @@ import asyncio
 from time import time
 from uuid import uuid4
 
-import NetworkManager
-
 from dbus_fast.service import ServiceInterface, method
 from dbus_fast import Variant
 
@@ -306,21 +304,71 @@ class MMModemSimpleInterface(ServiceInterface):
             self.network_manager_enable_wwan()
             conn = self.network_manager_connection_exists(f'{sim_id}')
             if not conn:
-                conn = NetworkManager.Settings.AddConnection(connection_settings)
-                ofono2mm_print(f"Connection '{conn.GetSettings()['connection']['id']}' created successfully with timestamp {current_timestamp}.", self.verbose)
+                conn = self.network_manager_add_connection(connection_settings)
+                conn_settings = self.network_manager_get_connection_settings(conn)
+                ofono2mm_print(f"Connection '{conn_settings['connection']['id']}' created successfully with timestamp {current_timestamp}.", self.verbose)
 
             if not force:
-                active_connections = NetworkManager.NetworkManager.ActiveConnections
+                active_connections = self.network_manager_get_active_connections()
                 for active_conn in active_connections:
-                    conn_path = active_conn.Connection.object_path
-                    if conn_path == conn.object_path:
+                    conn_path = self.network_manager_get_active_connection_connection(active_conn)
+                    if conn_path == conn:
                         return True
 
-            NetworkManager.NetworkManager.ActivateConnection(conn.object_path, "/", "/")
+            self.network_manager_activate_connection(conn)
             return True
         except Exception as e:
             ofono2mm_print(f"Failed to save network manager connection: {e}", self.verbose)
             return False
+
+    def network_manager_add_connection(self, connection_settings):
+        ofono2mm_print("Adding Network Manager connection", self.verbose)
+
+        DBusGMainLoop(set_as_default=True)
+
+        bus = SystemBus()
+        nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager/Settings")
+
+        nm_settings = Interface(nm, "org.freedesktop.NetworkManager.Settings")
+        return nm_settings.AddConnection(connection_settings)
+
+    def network_manager_get_connection_settings(self, conn):
+        DBusGMainLoop(set_as_default=True)
+
+        bus = SystemBus()
+        nm = bus.get_object("org.freedesktop.NetworkManager", conn)
+
+        nm_connection = Interface(nm, "org.freedesktop.NetworkManager.Settings.Connection")
+        return nm_connection.GetSettings()
+
+    def network_manager_get_active_connections(self):
+        DBusGMainLoop(set_as_default=True)
+
+        bus = SystemBus()
+        nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+
+        props = Interface(nm, "org.freedesktop.DBus.Properties")
+        return props.Get("org.freedesktop.NetworkManager", "ActiveConnections")
+
+    def network_manager_get_active_connection_connection(self, active_conn):
+        DBusGMainLoop(set_as_default=True)
+
+        bus = SystemBus()
+        nm = bus.get_object("org.freedesktop.NetworkManager", active_conn)
+
+        props = Interface(nm, "org.freedesktop.DBus.Properties")
+        return props.Get("org.freedesktop.NetworkManager.Connection.Active", "Connection")
+
+    def network_manager_activate_connection(self, conn):
+        ofono2mm_print(f"Activating Network Manager connection {conn}", self.verbose)
+
+        DBusGMainLoop(set_as_default=True)
+
+        bus = SystemBus()
+        nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+
+        nm_interface = Interface(nm, "org.freedesktop.NetworkManager")
+        return nm_interface.ActivateConnection(conn, "/", "/")
 
     def network_manager_connection_exists(self, target_sim_id):
         ofono2mm_print(f"Checking if Network Manager connection exists for SIM ID {target_sim_id}", self.verbose)
@@ -329,17 +377,16 @@ class MMModemSimpleInterface(ServiceInterface):
 
         DBusGMainLoop(set_as_default=True)
 
-        # for some reason NetworkManager.NetworkManager.Reload doesn't work correctly
         bus = SystemBus()
         nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager/Settings")
 
         nm_settings = Interface(nm, "org.freedesktop.NetworkManager.Settings")
         nm_settings.ReloadConnections()
 
-        connections = NetworkManager.Settings.ListConnections()
+        connections = nm_settings.ListConnections()
 
         for conn in connections:
-            conn_settings = conn.GetSettings()
+            conn_settings = self.network_manager_get_connection_settings(conn)
             if 'gsm' in conn_settings and 'sim-id' in conn_settings['gsm']:
                 apn = conn_settings['gsm']['sim-id']
                 if apn == target_sim_id:
