@@ -13,13 +13,12 @@ Package: ofono2mm
 Architecture: all
 Depends: ${misc:Depends},
          ${python3:Depends},
-	 python3-dbus-fast,
-	 python3-gi,
-	 modemmanager,
-	 geoclue-2.0,
-	 gir1.2-geoclue-2.0,
+         python3-dbus-fast,
+         python3-gi,
+         modemmanager,
+         geoclue-2.0,
+         gir1.2-geoclue-2.0,
          gir1.2-modemmanager-1.0,
-         python3-networkmanager,
          python3-dbus,
 Description: A python daemon implementing ModemManager DBus API and using ofono to manage the modem
 
