@@ -243,16 +243,6 @@ class MMBearerInterface(ServiceInterface):
         await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
         self.disconnecting = False
 
-    async def add_auth_ofono(self, username, password):
-        ofono2mm_print(f"Add authentication to oFono with username '{username}' and password '{password}'", self.verbose)
-
-        ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
-        try:
-            await ofono_ctx_interface.call_set_property("Username", Variant('s', username))
-            await ofono_ctx_interface.call_set_property("Password", Variant('s', password))
-        except Exception as e:
-            ofono2mm_print(f"Failed to set ofono authentication: {e}", self.verbose)
-
     def ofono_context_changed(self, propname, value):
         ofono2mm_print(f"oFono context changed for prop name {propname} set to value {value}", self.verbose)
 

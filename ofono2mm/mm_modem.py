@@ -1022,6 +1022,7 @@ class MMModemInterface(ServiceInterface):
         # ConnectionManager and get_contexts can take a bit to come up, so...
 
         retries_left = 5
+        contexts = []
 
         while retries_left > 0:
             try:
@@ -1046,54 +1047,33 @@ class MMModemInterface(ServiceInterface):
         protocol = read_setting("protocol", "ip").strip()
         ofono2mm_print(f"Creating bearer with protocol {protocol}", self.verbose)
 
-        # users would usually have to do
-        # set-context-property 0 AccessPointName example.apn && activate-context 1
-        # to activate the correct context for ofono2mm to use, lets do it on bearer creation to not need ofono scripts
-        chosen_apn = ''
-        ofono_ctx = ''
-        internet_ctx_exists = False
-        contexts = []
-        try:
-            contexts = await self.ofono_proxy['org.ofono.ConnectionManager'].call_get_contexts()
-        except Exception:
-            ofono2mm_print("Failed to get ofono contexts, ignoring", self.verbose)
+        ofono_ctx = None
 
         for ctx in contexts:
             name = ctx[1].get('Type', Variant('s', '')).value
-            apn = ctx[1].get('AccessPointName', Variant('s', '')).value
             if name.lower() == "internet":
-                if apn:
-                    chosen_apn = apn
                 ofono_ctx = ctx[0]
-                internet_ctx_exists = True
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
                 await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
-                await ofono_ctx_interface.call_set_property("AccessPointName", Variant('s', chosen_apn))
                 await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
                 await ofono_ctx_interface.call_set_property("Active", Variant('b', True))
                 break
 
-        if not internet_ctx_exists:
+        # MBPI did not provision any settings. use user provided bearer info
+        if ofono_ctx is None:
             try:
                 ofono_ctx = await self.ofono_proxy['org.ofono.ConnectionManager'].call_add_context("internet")
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
                 if 'apn' in properties:
                     await ofono_ctx_interface.call_set_property("AccessPointName", properties['apn'])
                 await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
-                mm_bearer_interface.ofono_ctx = ofono_ctx
-                await mm_bearer_interface.add_auth_ofono(properties['username'].value if 'username' in properties else '',
-                                                         properties['password'].value if 'password' in properties else '')
+                await ofono_ctx_interface.call_set_property("Username", Variant('s', properties['username'].value if 'username' in properties else ''))
+                await ofono_ctx_interface.call_set_property("Password", Variant('s', properties['password'].value if 'password' in properties else ''))
             except Exception as e:
-               # should be fine? both apndb and mbpi provision do this for us so.... lets just ignore for now
                ofono2mm_print(f"Failed to create internet context: {e}, ignoring", self.verbose)
-        else:
+
+        if ofono_ctx is not None:
             mm_bearer_interface.ofono_ctx = ofono_ctx
-            try:
-                await mm_bearer_interface.add_auth_ofono(properties['username'].value if 'username' in properties else '',
-                                                         properties['password'].value if 'password' in properties else '')
-            except Exception as e:
-               # this should also be fine, as it again comes from apndb or mbpi so we don't really nee to touch it
-               ofono2mm_print(f"Failed to set ofono authentication: {e}, ignoring", self.verbose)
 
         object_path = f'/org/freedesktop/ModemManager1/Bearer/{bearer_i}'
         mm_bearer_interface.own_object_path = object_path

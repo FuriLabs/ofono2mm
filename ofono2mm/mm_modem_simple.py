@@ -151,20 +151,13 @@ class MMModemSimpleInterface(ServiceInterface):
     async def Connect(self, properties: 'a{sv}') -> 'o':
         ofono2mm_print(f"Connecting with properties {properties}", self.verbose)
 
+        apn = properties['apn'].value if 'apn' in properties else ''
         if 'apn' not in properties:
             ofono2mm_print("User provided no apn, using default value ''", self.verbose)
-            apn = ''
-        else:
-            apn = properties['apn'].value
 
         for b in self.mm_modem.bearers:
             bearer_apn = self.mm_modem.bearers[b].props['Properties'].value['apn'].value if 'apn' in self.mm_modem.bearers[b].props['Properties'].value else ''
             if bearer_apn == apn:
-                try:
-                    await self.mm_modem.bearers[b].add_auth_ofono(properties['username'].value if 'username' in properties else '',
-                                                                  properties['password'].value if 'password' in properties else '')
-                except Exception as e:
-                    ofono2mm_print(f"Failed to set ofono authentication: {e}", self.verbose)
                 self.mm_modem.bearers[b].props['Properties'] = Variant('a{sv}', properties)
                 if self.mm_modem.bearers[b].active_connect == 0:
                     self.mm_modem.bearers[b].active_connect += 1
