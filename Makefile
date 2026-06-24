@@ -5,6 +5,7 @@ SBINDIR ?= $(PREFIX)/sbin
 SYSTEMD_DIR = /usr/lib/systemd/system
 POLKIT_DIR = /etc/polkit-1/localauthority/10-vendor.d
 DBUS_DIR = /etc/dbus-1/system.d
+NM_CONF_DIR = /etc/NetworkManager/conf.d
 
 MAIN = main.py
 OFONO2MM_DIR = ofono2mm
@@ -39,6 +40,9 @@ install:
 
 	install -d $(DESTDIR)$(DBUS_DIR)
 	install -m 644 extra/org.freedesktop.ModemManager1.conf $(DESTDIR)$(DBUS_DIR)
+
+	install -d $(DESTDIR)$(NM_CONF_DIR)
+	install -m 644 extra/10-ofono2mm-native-ofono-unmanaged.conf $(DESTDIR)$(NM_CONF_DIR)
 
 uninstall:
 	rm -rf $(DESTDIR)$(LIBDIR)/ofono2mm/
