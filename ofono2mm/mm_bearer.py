@@ -194,6 +194,10 @@ class MMBearerInterface(ServiceInterface):
         protocol = read_setting("protocol", "ip").strip()
         ofono2mm_print(f"Activating bearer with protocol {protocol}", self.verbose)
 
+        # Mark this Active bounce as self-initiated so ofono_context_changed doesn't
+        # mistake our own False->True cycle for an unexpected drop and spawn a
+        # competing reconnect_task via network_manager_set_apn(force=True)
+        self.disconnecting = True
         try:
             await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', False)), timeout=5.0)
             await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
@@ -204,6 +208,8 @@ class MMBearerInterface(ServiceInterface):
                 ofono2mm_print(f"Failed to set context to active: {e}", self.verbose)
                 await asyncio.sleep(5)
                 raise Exception(str(e))
+        finally:
+            self.disconnecting = False
 
         if self.active_connect >= 1:
             self.active_connect -= 1
