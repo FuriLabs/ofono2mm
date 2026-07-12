@@ -273,14 +273,21 @@ class MMBearerInterface(ServiceInterface):
                     self.mm_modem.props['Ports'].value.append([value.value['Interface'].value, 2]) # port type AT MM_MODEM_PORT_TYPE_AT
                     self.mm_modem.emit_properties_changed({'Ports': self.mm_modem.props['Ports'].value})
 
+            new_ip4 = {'method': Variant('u', 3)} # default dhcp MM_BEARER_IP_METHOD_DHCP
+
             if 'Method' in value.value:
                 if value.value['Method'].value == 'static':
-                    self.props['Ip4Config'].value['method'] = Variant('u', 2) # static MM_BEARER_IP_METHOD_STATIC
+                    new_ip4['method'] = Variant('u', 2) # static MM_BEARER_IP_METHOD_STATIC
                 if value.value['Method'].value == 'dhcp':
-                    self.props['Ip4Config'].value['method'] = Variant('u', 3) # dhcp MM_BEARER_IP_METHOD_DHCP
+                    new_ip4['method'] = Variant('u', 3) # dhcp MM_BEARER_IP_METHOD_DHCP
 
-            if 'Address' in value.value:
-                self.props['Ip4Config'].value['address'] = value.value['Address']
+            if 'Address' in value.value and value.value['Address'].value:
+                new_ip4['address'] = value.value['Address']
+
+            if 'Netmask' in value.value and value.value['Netmask'].value:
+                octets = value.value['Netmask'].value.split('.')
+                prefix = sum(bin(int(octet)).count('1') for octet in octets)
+                new_ip4['prefix'] = Variant('u', prefix)
 
             if 'DomainNameServers' in value.value:
                 ipv4_dns = []
@@ -288,9 +295,11 @@ class MMBearerInterface(ServiceInterface):
                     ipv4_dns.append(dns)
 
                 for i in range(0, min(3, len(ipv4_dns))):
-                    self.props['Ip4Config'].value['dns' + str(i + 1)] = Variant('s', ipv4_dns[i])
-            if 'Gateway' in value.value:
-                self.props['Ip4Config'].value['gateway'] = value.value['Gateway']
+                    new_ip4['dns' + str(i + 1)] = Variant('s', ipv4_dns[i])
+            if 'Gateway' in value.value and value.value['Gateway'].value:
+                new_ip4['gateway'] = value.value['Gateway']
+
+            self.props['Ip4Config'] = Variant('a{sv}', new_ip4)
 
             changed_props = {}
             for prop in self.props:
@@ -301,14 +310,21 @@ class MMBearerInterface(ServiceInterface):
         elif propname == "IPv6.Settings":
             old_props = deepcopy(self.props)
 
+            new_ip6 = {'method': Variant('u', 3)} # default dhcp MM_BEARER_IP_METHOD_DHCP
+
             if 'Method' in value.value:
                 if value.value['Method'].value == 'static':
-                    self.props['Ip6Config'].value['method'] = Variant('u', 2) # static MM_BEARER_IP_METHOD_STATIC
+                    new_ip6['method'] = Variant('u', 2) # static MM_BEARER_IP_METHOD_STATIC
                 if value.value['Method'].value == 'dhcp':
-                    self.props['Ip6Config'].value['method'] = Variant('u', 3) # dhcp MM_BEARER_IP_METHOD_DHCP
+                    new_ip6['method'] = Variant('u', 3) # dhcp MM_BEARER_IP_METHOD_DHCP
+            elif 'Address' in value.value and value.value['Address'].value:
+                new_ip6['method'] = Variant('u', 2) # static MM_BEARER_IP_METHOD_STATIC
 
             if 'Address' in value.value and value.value['Address'].value:
-                self.props['Ip6Config'].value['address'] = value.value['Address']
+                new_ip6['address'] = value.value['Address']
+
+            if 'PrefixLength' in value.value:
+                new_ip6['prefix'] = Variant('u', value.value['PrefixLength'].value)
 
             if 'DomainNameServers' in value.value:
                 ipv6_dns = []
@@ -316,9 +332,11 @@ class MMBearerInterface(ServiceInterface):
                     ipv6_dns.append(dns)
 
                 for i in range(0, min(3, len(ipv6_dns))):
-                    self.props['Ip6Config'].value['dns' + str(i + 1)] = Variant('s', ipv6_dns[i])
-            if 'Gateway' in value.value:
-                self.props['Ip6Config'].value['gateway'] = value.value['Gateway']
+                    new_ip6['dns' + str(i + 1)] = Variant('s', ipv6_dns[i])
+            if 'Gateway' in value.value and value.value['Gateway'].value:
+                new_ip6['gateway'] = value.value['Gateway']
+
+            self.props['Ip6Config'] = Variant('a{sv}', new_ip6)
 
             changed_props = {}
             for prop in self.props:
