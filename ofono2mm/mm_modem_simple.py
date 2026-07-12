@@ -186,9 +186,13 @@ class MMModemSimpleInterface(ServiceInterface):
         ofono2mm_print(f"Disconnecting object path {path}", self.verbose)
 
         if path == '/':
-            for b in self.mm_modem.bearers:
+            for b in list(self.mm_modem.bearers):
+                bearer = self.mm_modem.bearers.get(b)
+                if bearer is None:
+                    # bearer was removed while we were awaiting a previous disconnect
+                    continue
                 try:
-                    await self.mm_modem.bearers[b].doDisconnect()
+                    await bearer.doDisconnect()
                 except Exception as e:
                     ofono2mm_print(f"Failed to disconnect bearer {path}: {e}", self.verbose)
         elif path in self.mm_modem.bearers:
