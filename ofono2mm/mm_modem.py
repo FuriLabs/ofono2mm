@@ -745,14 +745,14 @@ class MMModemInterface(ServiceInterface):
                         self.locked = True
 
                     self.props['Sim'] = self.sim
-                    self.props['StateFailedReason'] = Variant('i', 0) # no failure MM_MODEM_STATE_FAILED_REASON_NONE
+                    self.props['StateFailedReason'] = Variant('u', 0) # no failure MM_MODEM_STATE_FAILED_REASON_NONE
                 else:
                     self.props['Sim'] = Variant('o', '/')
                     self.props['State'] = Variant('i', -1) # state unknown
-                    self.props['StateFailedReason'] = Variant('i', 2) # sim missing MM_MODEM_STATE_FAILED_REASON_SIM_MISSING
+                    self.props['StateFailedReason'] = Variant('u', 2) # sim missing MM_MODEM_STATE_FAILED_REASON_SIM_MISSING
             else:
                 self.props['State'] = Variant('i', -1) # state unknown
-                self.props['StateFailedReason'] = Variant('i', 2) # sim missing MM_MODEM_STATE_FAILED_REASON_SIM_MISSING
+                self.props['StateFailedReason'] = Variant('u', 2) # sim missing MM_MODEM_STATE_FAILED_REASON_SIM_MISSING
 
             self.props['PowerState'] = Variant('i', 3) # power is on MM_MODEM_POWER_STATE_ON
 
