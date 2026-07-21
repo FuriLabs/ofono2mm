@@ -280,7 +280,6 @@ class MMModemSimpleInterface(ServiceInterface):
             },
             'gsm': {
                 'apn': f'{apn}',
-                'home-only': True,
                 'sim-id': f'{sim_id}'
             },
             'ipv4': {
