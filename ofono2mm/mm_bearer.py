@@ -9,6 +9,16 @@ from dbus_fast import Variant
 from ofono2mm.utils import async_retryable, save_setting, read_setting, netmask_to_prefix
 from ofono2mm.logging import ofono2mm_print
 
+# oFono only replies to Active=True once the data call has actually been set up or has
+# failed. On a modem where setup routinely takes longer than the previous 5s limit, a
+# short timeout turns a still-pending activation into an apparent success.
+ACTIVATE_TIMEOUT_SECONDS = 30.0
+
+# Interface is filled in from oFono's Settings PropertyChanged signal, which can land
+# after the Active=True method reply returns.
+INTERFACE_WAIT_SECONDS = 5.0
+INTERFACE_POLL_SECONDS = 0.1
+
 class MMBearerInterface(ServiceInterface):
     def __init__(self, ofono_client, modem_name, ofono_interfaces, mm_modem, verbose=False):
         super().__init__('org.freedesktop.ModemManager1.Bearer')
@@ -178,6 +188,26 @@ class MMBearerInterface(ServiceInterface):
         await self.doConnect()
 
     @async_retryable()
+    async def activate_ofono_context(self, ofono_ctx_interface, protocol):
+        # Mark this Active bounce as self-initiated so ofono_context_changed doesn't
+        # mistake our own False->True cycle for an unexpected drop and spawn a
+        # competing reconnect_task via network_manager_set_apn(force=True)
+        self.disconnecting = True
+        try:
+            await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', False)), timeout=5.0)
+            await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
+            await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', True)), timeout=ACTIVATE_TIMEOUT_SECONDS)
+        except Exception as e:
+            if "GPRS" in str(e):
+                # no signal? wait a litle and try again
+                ofono2mm_print(f"Failed to set context to active: {e}", self.verbose)
+                await asyncio.sleep(5)
+            else:
+                ofono2mm_print(f"Failed to activate context: {e!r}", self.verbose)
+            raise
+        finally:
+            self.disconnecting = False
+
     async def doConnect(self):
         ofono2mm_print(f"Connecting the bearer at path {self.own_object_path} with ofono context {self.ofono_ctx}", self.verbose)
         try:
@@ -194,25 +224,23 @@ class MMBearerInterface(ServiceInterface):
         protocol = read_setting("protocol", "ip").strip()
         ofono2mm_print(f"Activating bearer with protocol {protocol}", self.verbose)
 
-        # Mark this Active bounce as self-initiated so ofono_context_changed doesn't
-        # mistake our own False->True cycle for an unexpected drop and spawn a
-        # competing reconnect_task via network_manager_set_apn(force=True)
-        self.disconnecting = True
         try:
-            await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', False)), timeout=5.0)
-            await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
-            await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', True)), timeout=5.0)
-        except Exception as e:
-            if "GPRS" in str(e):
-                # no signal? wait a litle and try again
-                ofono2mm_print(f"Failed to set context to active: {e}", self.verbose)
-                await asyncio.sleep(5)
-                raise Exception(str(e))
-        finally:
-            self.disconnecting = False
+            await self.activate_ofono_context(ofono_ctx_interface, protocol)
 
-        if self.active_connect >= 1:
-            self.active_connect -= 1
+            # A bearer with no Interface is not usable by NetworkManager, so treat one
+            # that never arrives as a failed activation.
+            waited = 0.0
+            while not self.props['Interface'].value and waited < INTERFACE_WAIT_SECONDS:
+                await asyncio.sleep(INTERFACE_POLL_SECONDS)
+                waited += INTERFACE_POLL_SECONDS
+
+            if not self.props['Interface'].value:
+                raise Exception(f"oFono context {self.ofono_ctx} reported no interface after activation")
+        finally:
+            # Release the slot on failure too, or one failed activation blocks every
+            # later Connect() for this bearer.
+            if self.active_connect >= 1:
+                self.active_connect -= 1
 
         # Clear the reconnection task
         self.reconnect_task = None
