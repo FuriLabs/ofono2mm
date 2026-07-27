@@ -116,7 +116,7 @@ class MMModemInterface(ServiceInterface):
             'Drivers': Variant('as', ['binder']),
             'Plugin': Variant('s', 'ofono2mm'),
             'PrimaryPort': Variant('s', self.modem_name),
-            'Ports': Variant('a(su)', [[self.modem_name, 0]]), # on runtime unknown MM_MODEM_PORT_TYPE_UNKNOWN
+            'Ports': Variant('a(su)', [[self.modem_name, 1]]), # unknown MM_MODEM_PORT_TYPE_UNKNOWN
             'EquipmentIdentifier': Variant('s', ''),
             'UnlockRequired': Variant('u', 0), # on runtime unknown MM_MODEM_LOCK_UNKNOWN
             'UnlockRetries': Variant('a{uu}', {}),
@@ -548,7 +548,7 @@ class MMModemInterface(ServiceInterface):
                 if 'Settings' in ctx[1] and 'Interface' in ctx[1]['Settings'].value:
                     port = [ctx[1]['Settings'].value['Interface'].value, 2]
                     if port not in self.props['Ports'].value:
-                        self.props['Ports'].value.append(port) # port type AT MM_MODEM_PORT_TYPE_AT
+                        self.props['Ports'].value.append(port) # port type net MM_MODEM_PORT_TYPE_NET
                         self.emit_properties_changed({'Ports': self.props['Ports'].value})
 
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ctx[0]]["org.ofono.ConnectionContext"]
