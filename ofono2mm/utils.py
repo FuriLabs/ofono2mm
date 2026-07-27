@@ -63,3 +63,17 @@ def parse_settings():
                     k, v = line.strip().split(':', 1)
                     settings[k] = v.strip()
     return settings
+
+def netmask_to_prefix(netmask):
+    """
+    Convert a dotted-quad IPv4 netmask to a prefix length.
+
+    oFono reports the netmask, while ModemManager's Ip4Config expects a
+    prefix - and a missing or zero prefix makes NetworkManager fall back to
+    a guessed classful value, which puts the address on the wrong-sized
+    network.
+    """
+    try:
+        return sum(bin(int(octet)).count('1') for octet in netmask.split('.'))
+    except (AttributeError, ValueError):
+        return 0
