@@ -25,7 +25,7 @@ from ofono2mm.mm_bearer import MMBearerInterface
 from ofono2mm.mm_modem_voice import MMModemVoiceInterface
 from ofono2mm.mm_modem_cell_broadcast import MMModemCellBroadcastInterface
 from ofono2mm.logging import ofono2mm_print
-from ofono2mm.utils import read_setting, save_setting
+from ofono2mm.utils import read_setting, save_setting, netmask_to_prefix
 from ofono2mm.dbus_interface_properties import DBusInterfaceProperties
 from ofono2mm.types import _BANDS
 
@@ -471,6 +471,7 @@ class MMModemInterface(ServiceInterface):
 
                 ipv4_method = 0
                 ipv4_address = ''
+                ipv4_prefix = 0
                 ipv4_dns = []
                 ipv4_gateway = ''
 
@@ -485,6 +486,9 @@ class MMModemInterface(ServiceInterface):
                     if 'Address' in settings:
                         ipv4_address = settings['Address'].value
 
+                    if 'Netmask' in settings and settings['Netmask'].value:
+                        ipv4_prefix = netmask_to_prefix(settings['Netmask'].value)
+
                     if 'DomainNameServers' in settings:
                         for dns in settings['DomainNameServers'].value:
                             ipv4_dns.append(dns)
@@ -494,6 +498,7 @@ class MMModemInterface(ServiceInterface):
 
                 ipv6_method = 0
                 ipv6_address = ''
+                ipv6_prefix = 0
                 ipv6_dns = []
                 ipv6_gateway = ''
 
@@ -503,6 +508,9 @@ class MMModemInterface(ServiceInterface):
                     if 'Address' in ipv6_settings and ipv6_settings['Address'].value:
                         ipv6_method = 2  # static
                         ipv6_address = ipv6_settings['Address'].value
+
+                    if 'PrefixLength' in ipv6_settings:
+                        ipv6_prefix = ipv6_settings['PrefixLength'].value
 
                     if 'DomainNameServers' in ipv6_settings:
                         for dns in ipv6_settings['DomainNameServers'].value:
@@ -517,6 +525,7 @@ class MMModemInterface(ServiceInterface):
                     "Ip4Config": Variant('a{sv}', {
                         "method": Variant('u', ipv4_method),
                         "address": Variant('s', ipv4_address),
+                        "prefix": Variant('u', ipv4_prefix),
                         "dns1": Variant('s', ipv4_dns[0] if len(ipv4_dns) > 0 else ''),
                         "dns2": Variant('s', ipv4_dns[1] if len(ipv4_dns) > 1 else ''),
                         "dns3": Variant('s', ipv4_dns[2] if len(ipv4_dns) > 2 else ''),
@@ -525,6 +534,7 @@ class MMModemInterface(ServiceInterface):
                     "Ip6Config": Variant('a{sv}', {
                         "method": Variant('u', ipv6_method),
                         "address": Variant('s', ipv6_address),
+                        "prefix": Variant('u', ipv6_prefix),
                         "dns1": Variant('s', ipv6_dns[0] if len(ipv6_dns) > 0 else ''),
                         "dns2": Variant('s', ipv6_dns[1] if len(ipv6_dns) > 1 else ''),
                         "dns3": Variant('s', ipv6_dns[2] if len(ipv6_dns) > 2 else ''),
@@ -574,6 +584,7 @@ class MMModemInterface(ServiceInterface):
 
             ipv4_method = 0
             ipv4_address = ''
+            ipv4_prefix = 0
             ipv4_dns = []
             ipv4_gateway = ''
 
@@ -588,6 +599,9 @@ class MMModemInterface(ServiceInterface):
                 if 'Address' in settings:
                     ipv4_address = settings['Address'].value
 
+                if 'Netmask' in settings and settings['Netmask'].value:
+                    ipv4_prefix = netmask_to_prefix(settings['Netmask'].value)
+
                 if 'DomainNameServers' in settings:
                     for dns in settings['DomainNameServers'].value:
                         ipv4_dns.append(dns)
@@ -597,6 +611,7 @@ class MMModemInterface(ServiceInterface):
 
             ipv6_method = 0
             ipv6_address = ''
+            ipv6_prefix = 0
             ipv6_dns = []
             ipv6_gateway = ''
 
@@ -606,6 +621,9 @@ class MMModemInterface(ServiceInterface):
                 if 'Address' in ipv6_settings and ipv6_settings['Address'].value:
                     ipv6_method = 2  # static
                     ipv6_address = ipv6_settings['Address'].value
+
+                if 'PrefixLength' in ipv6_settings:
+                    ipv6_prefix = ipv6_settings['PrefixLength'].value
 
                 if 'DomainNameServers' in ipv6_settings:
                     for dns in ipv6_settings['DomainNameServers'].value:
@@ -620,6 +638,7 @@ class MMModemInterface(ServiceInterface):
                 "Ip4Config": Variant('a{sv}', {
                     "method": Variant('u', ipv4_method),
                     "address": Variant('s', ipv4_address),
+                    "prefix": Variant('u', ipv4_prefix),
                     "dns1": Variant('s', ipv4_dns[0] if len(ipv4_dns) > 0 else ''),
                     "dns2": Variant('s', ipv4_dns[1] if len(ipv4_dns) > 1 else ''),
                     "dns3": Variant('s', ipv4_dns[2] if len(ipv4_dns) > 2 else ''),
@@ -628,6 +647,7 @@ class MMModemInterface(ServiceInterface):
                 "Ip6Config": Variant('a{sv}', {
                     "method": Variant('u', ipv6_method),
                     "address": Variant('s', ipv6_address),
+                    "prefix": Variant('u', ipv6_prefix),
                     "dns1": Variant('s', ipv6_dns[0] if len(ipv6_dns) > 0 else ''),
                     "dns2": Variant('s', ipv6_dns[1] if len(ipv6_dns) > 1 else ''),
                     "dns3": Variant('s', ipv6_dns[2] if len(ipv6_dns) > 2 else ''),

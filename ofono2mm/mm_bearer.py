@@ -6,7 +6,7 @@ from dbus_fast.service import ServiceInterface, method, dbus_property
 from dbus_fast.constants import PropertyAccess
 from dbus_fast import Variant
 
-from ofono2mm.utils import async_retryable, save_setting, read_setting
+from ofono2mm.utils import async_retryable, save_setting, read_setting, netmask_to_prefix
 from ofono2mm.logging import ofono2mm_print
 
 class MMBearerInterface(ServiceInterface):
@@ -285,9 +285,7 @@ class MMBearerInterface(ServiceInterface):
                 new_ip4['address'] = value.value['Address']
 
             if 'Netmask' in value.value and value.value['Netmask'].value:
-                octets = value.value['Netmask'].value.split('.')
-                prefix = sum(bin(int(octet)).count('1') for octet in octets)
-                new_ip4['prefix'] = Variant('u', prefix)
+                new_ip4['prefix'] = Variant('u', netmask_to_prefix(value.value['Netmask'].value))
 
             if 'DomainNameServers' in value.value:
                 ipv4_dns = []
