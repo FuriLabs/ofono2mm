@@ -147,6 +147,17 @@ class MMModemSimpleInterface(ServiceInterface):
 
         self.props['current-bands'] = Variant('au', supported_bands)
 
+    def fallback_bearer_path(self):
+        # Bearer/0 always exists, but handing back one that never got an interface makes
+        # NetworkManager fail the activation with "missing data port" and retry at once,
+        # with no backoff. Only fall back to a bearer that is actually usable.
+        path = '/org/freedesktop/ModemManager1/Bearer/0'
+        fallback = self.mm_modem.bearers.get(path)
+        if fallback is None or not fallback.props['Interface'].value:
+            raise Exception("No connected bearer available to fall back to")
+
+        return path
+
     @method()
     async def Connect(self, properties: 'a{sv}') -> 'o':
         ofono2mm_print(f"Connecting with properties {properties}", self.verbose)
@@ -172,11 +183,10 @@ class MMModemSimpleInterface(ServiceInterface):
                 await self.mm_modem.bearers[bearer].doConnect()
             else:
                 ofono2mm_print(f"Failed to create bearer, active connect is {self.mm_modem.bearers[bearer].active_connect}", self.verbose)
-                # 0 is always available so just fallback to that, whatever
-                bearer = '/org/freedesktop/ModemManager1/Bearer/0'
+                bearer = self.fallback_bearer_path()
         except Exception as e:
             ofono2mm_print(f"Failed to create bearer: {e}", self.verbose)
-            bearer = '/org/freedesktop/ModemManager1/Bearer/0'
+            bearer = self.fallback_bearer_path()
 
         ofono2mm_print(f"Bearer activated at path {bearer}", self.verbose)
         return bearer
