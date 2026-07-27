@@ -270,7 +270,7 @@ class MMBearerInterface(ServiceInterface):
                 self.props['Interface'] = value.value['Interface']
                 self.emit_properties_changed({'Interface': value.value['Interface'].value})
                 if [value.value['Interface'].value, 2] not in self.mm_modem.props['Ports'].value:
-                    self.mm_modem.props['Ports'].value.append([value.value['Interface'].value, 2]) # port type AT MM_MODEM_PORT_TYPE_AT
+                    self.mm_modem.props['Ports'].value.append([value.value['Interface'].value, 2]) # port type net MM_MODEM_PORT_TYPE_NET
                     self.mm_modem.emit_properties_changed({'Ports': self.mm_modem.props['Ports'].value})
 
             new_ip4 = {'method': Variant('u', 3)} # default dhcp MM_BEARER_IP_METHOD_DHCP
