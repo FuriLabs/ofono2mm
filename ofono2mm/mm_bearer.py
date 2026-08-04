@@ -181,6 +181,12 @@ class MMBearerInterface(ServiceInterface):
         if changed_props:
             self.emit_properties_changed(changed_props)
 
+    def has_usable_config(self):
+        # oFono supplies no IPv4 address on these modems, so either family satisfies this.
+        return bool(self.props['Interface'].value
+                    and (self.props['Ip4Config'].value.get('address')
+                         or self.props['Ip6Config'].value.get('address')))
+
     @method()
     async def Connect(self):
         ofono2mm_print("Called bearer connect", self.verbose)
@@ -227,15 +233,15 @@ class MMBearerInterface(ServiceInterface):
         try:
             await self.activate_ofono_context(ofono_ctx_interface, protocol)
 
-            # A bearer with no Interface is not usable by NetworkManager, so treat one
-            # that never arrives as a failed activation.
+            # NetworkManager falls back to SLAAC without an address, and these modems
+            # never answer a router solicitation.
             waited = 0.0
-            while not self.props['Interface'].value and waited < INTERFACE_WAIT_SECONDS:
+            while not self.has_usable_config() and waited < INTERFACE_WAIT_SECONDS:
                 await asyncio.sleep(INTERFACE_POLL_SECONDS)
                 waited += INTERFACE_POLL_SECONDS
 
-            if not self.props['Interface'].value:
-                raise Exception(f"oFono context {self.ofono_ctx} reported no interface after activation")
+            if not self.has_usable_config():
+                raise Exception(f"oFono context {self.ofono_ctx} reported no usable configuration after activation")
         finally:
             # Release the slot on failure too, or one failed activation blocks every
             # later Connect() for this bearer.
