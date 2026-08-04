@@ -193,8 +193,31 @@ class MMBearerInterface(ServiceInterface):
         self.active_connect += 1
         await self.doConnect()
 
+    async def adopt_active_context(self, ofono_ctx_interface):
+        """Take on the settings of a context that is already up, without touching it."""
+        try:
+            ctx_props = await ofono_ctx_interface.call_get_properties()
+        except Exception as e:
+            ofono2mm_print(f"Failed to read context properties: {e}", self.verbose)
+            return False
+
+        if not ctx_props.get('Active', Variant('b', False)).value:
+            return False
+
+        # A bearer only learns these from the signals that arrive while it exists.
+        for propname in ('Settings', 'IPv6.Settings', 'Active'):
+            if propname in ctx_props:
+                self.ofono_context_changed(propname, ctx_props[propname])
+
+        return self.has_usable_config()
+
     @async_retryable()
     async def activate_ofono_context(self, ofono_ctx_interface, protocol):
+        # Re-activating a context that is already up would tear down a live PDN.
+        if await self.adopt_active_context(ofono_ctx_interface):
+            ofono2mm_print(f"oFono context {self.ofono_ctx} is already active on {self.props['Interface'].value}", self.verbose)
+            return
+
         # Mark this Active bounce as self-initiated so ofono_context_changed doesn't
         # mistake our own False->True cycle for an unexpected drop and spawn a
         # competing reconnect_task via network_manager_set_apn(force=True)
