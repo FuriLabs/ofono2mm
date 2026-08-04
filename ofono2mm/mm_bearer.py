@@ -281,6 +281,11 @@ class MMBearerInterface(ServiceInterface):
         ofono2mm_print(f"oFono context changed for prop name {propname} set to value {value}", self.verbose)
 
         if propname == "Active":
+            if not value.value:
+                # The name is only ever copied out of a populated Settings, so without
+                # this it survives the deactivation.
+                self.props['Interface'] = Variant('s', '')
+
             if self.disconnecting and value.value:
                 self.disconnecting = False
             elif not self.disconnecting and (not value.value) and self.reconnect_task is None and self.props['Connected'].value:
