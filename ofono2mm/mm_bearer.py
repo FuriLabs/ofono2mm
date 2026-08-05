@@ -309,6 +309,8 @@ class MMBearerInterface(ServiceInterface):
     def ofono_context_changed(self, propname, value):
         ofono2mm_print(f"oFono context changed for prop name {propname} set to value {value}", self.verbose)
 
+        old_props = deepcopy(self.props)
+
         if propname == "Active":
             if not value.value:
                 # The name is only ever copied out of a populated Settings, so without
@@ -324,13 +326,9 @@ class MMBearerInterface(ServiceInterface):
                 self.reconnect_task = asyncio.create_task(self.mm_modem.mm_modem_simple_interface.network_manager_set_apn(force=True))
 
             self.props['Connected'] = value
-            self.emit_properties_changed({'Connected': value.value})
         elif propname == "Settings":
-            old_props = deepcopy(self.props)
-
             if 'Interface' in value.value:
                 self.props['Interface'] = value.value['Interface']
-                self.emit_properties_changed({'Interface': value.value['Interface'].value})
                 if [value.value['Interface'].value, 2] not in self.mm_modem.props['Ports'].value:
                     self.mm_modem.props['Ports'].value.append([value.value['Interface'].value, 2]) # port type net MM_MODEM_PORT_TYPE_NET
                     self.mm_modem.emit_properties_changed({'Ports': self.mm_modem.props['Ports'].value})
@@ -360,16 +358,7 @@ class MMBearerInterface(ServiceInterface):
                 new_ip4['gateway'] = value.value['Gateway']
 
             self.props['Ip4Config'] = Variant('a{sv}', new_ip4)
-
-            changed_props = {}
-            for prop in self.props:
-                if self.props[prop].value != old_props[prop].value:
-                    changed_props.update({ prop: self.props[prop].value })
-            if changed_props:
-                self.emit_properties_changed(changed_props)
         elif propname == "IPv6.Settings":
-            old_props = deepcopy(self.props)
-
             new_ip6 = {'method': Variant('u', 3)} # default dhcp MM_BEARER_IP_METHOD_DHCP
 
             if 'Method' in value.value:
@@ -398,12 +387,12 @@ class MMBearerInterface(ServiceInterface):
 
             self.props['Ip6Config'] = Variant('a{sv}', new_ip6)
 
-            changed_props = {}
-            for prop in self.props:
-                if self.props[prop].value != old_props[prop].value:
-                    changed_props.update({ prop: self.props[prop].value })
-            if changed_props:
-                self.emit_properties_changed(changed_props)
+        changed_props = {}
+        for prop in self.props:
+            if self.props[prop].value != old_props[prop].value:
+                changed_props.update({ prop: self.props[prop].value })
+        if changed_props:
+            self.emit_properties_changed(changed_props)
 
     def ofono_changed(self, _name, _varval):
         asyncio.create_task(self.set_props())
