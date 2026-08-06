@@ -181,14 +181,43 @@ class MMBearerInterface(ServiceInterface):
         if changed_props:
             self.emit_properties_changed(changed_props)
 
+    def has_usable_config(self):
+        # oFono supplies no IPv4 address on these modems, so either family satisfies this.
+        return bool(self.props['Interface'].value
+                    and (self.props['Ip4Config'].value.get('address')
+                         or self.props['Ip6Config'].value.get('address')))
+
     @method()
     async def Connect(self):
         ofono2mm_print("Called bearer connect", self.verbose)
         self.active_connect += 1
         await self.doConnect()
 
+    async def adopt_active_context(self, ofono_ctx_interface):
+        """Take on the settings of a context that is already up, without touching it."""
+        try:
+            ctx_props = await ofono_ctx_interface.call_get_properties()
+        except Exception as e:
+            ofono2mm_print(f"Failed to read context properties: {e}", self.verbose)
+            return False
+
+        if not ctx_props.get('Active', Variant('b', False)).value:
+            return False
+
+        # A bearer only learns these from the signals that arrive while it exists.
+        for propname in ('Settings', 'IPv6.Settings', 'Active'):
+            if propname in ctx_props:
+                self.ofono_context_changed(propname, ctx_props[propname])
+
+        return self.has_usable_config()
+
     @async_retryable()
     async def activate_ofono_context(self, ofono_ctx_interface, protocol):
+        # Re-activating a context that is already up would tear down a live PDN.
+        if await self.adopt_active_context(ofono_ctx_interface):
+            ofono2mm_print(f"oFono context {self.ofono_ctx} is already active on {self.props['Interface'].value}", self.verbose)
+            return
+
         # Mark this Active bounce as self-initiated so ofono_context_changed doesn't
         # mistake our own False->True cycle for an unexpected drop and spawn a
         # competing reconnect_task via network_manager_set_apn(force=True)
@@ -227,15 +256,15 @@ class MMBearerInterface(ServiceInterface):
         try:
             await self.activate_ofono_context(ofono_ctx_interface, protocol)
 
-            # A bearer with no Interface is not usable by NetworkManager, so treat one
-            # that never arrives as a failed activation.
+            # NetworkManager falls back to SLAAC without an address, and these modems
+            # never answer a router solicitation.
             waited = 0.0
-            while not self.props['Interface'].value and waited < INTERFACE_WAIT_SECONDS:
+            while not self.has_usable_config() and waited < INTERFACE_WAIT_SECONDS:
                 await asyncio.sleep(INTERFACE_POLL_SECONDS)
                 waited += INTERFACE_POLL_SECONDS
 
-            if not self.props['Interface'].value:
-                raise Exception(f"oFono context {self.ofono_ctx} reported no interface after activation")
+            if not self.has_usable_config():
+                raise Exception(f"oFono context {self.ofono_ctx} reported no usable configuration after activation")
         finally:
             # Release the slot on failure too, or one failed activation blocks every
             # later Connect() for this bearer.
@@ -280,7 +309,14 @@ class MMBearerInterface(ServiceInterface):
     def ofono_context_changed(self, propname, value):
         ofono2mm_print(f"oFono context changed for prop name {propname} set to value {value}", self.verbose)
 
+        old_props = deepcopy(self.props)
+
         if propname == "Active":
+            if not value.value:
+                # The name is only ever copied out of a populated Settings, so without
+                # this it survives the deactivation.
+                self.props['Interface'] = Variant('s', '')
+
             if self.disconnecting and value.value:
                 self.disconnecting = False
             elif not self.disconnecting and (not value.value) and self.reconnect_task is None and self.props['Connected'].value:
@@ -290,13 +326,9 @@ class MMBearerInterface(ServiceInterface):
                 self.reconnect_task = asyncio.create_task(self.mm_modem.mm_modem_simple_interface.network_manager_set_apn(force=True))
 
             self.props['Connected'] = value
-            self.emit_properties_changed({'Connected': value.value})
         elif propname == "Settings":
-            old_props = deepcopy(self.props)
-
             if 'Interface' in value.value:
                 self.props['Interface'] = value.value['Interface']
-                self.emit_properties_changed({'Interface': value.value['Interface'].value})
                 if [value.value['Interface'].value, 2] not in self.mm_modem.props['Ports'].value:
                     self.mm_modem.props['Ports'].value.append([value.value['Interface'].value, 2]) # port type net MM_MODEM_PORT_TYPE_NET
                     self.mm_modem.emit_properties_changed({'Ports': self.mm_modem.props['Ports'].value})
@@ -326,16 +358,7 @@ class MMBearerInterface(ServiceInterface):
                 new_ip4['gateway'] = value.value['Gateway']
 
             self.props['Ip4Config'] = Variant('a{sv}', new_ip4)
-
-            changed_props = {}
-            for prop in self.props:
-                if self.props[prop].value != old_props[prop].value:
-                    changed_props.update({ prop: self.props[prop].value })
-            if changed_props:
-                self.emit_properties_changed(changed_props)
         elif propname == "IPv6.Settings":
-            old_props = deepcopy(self.props)
-
             new_ip6 = {'method': Variant('u', 3)} # default dhcp MM_BEARER_IP_METHOD_DHCP
 
             if 'Method' in value.value:
@@ -364,12 +387,12 @@ class MMBearerInterface(ServiceInterface):
 
             self.props['Ip6Config'] = Variant('a{sv}', new_ip6)
 
-            changed_props = {}
-            for prop in self.props:
-                if self.props[prop].value != old_props[prop].value:
-                    changed_props.update({ prop: self.props[prop].value })
-            if changed_props:
-                self.emit_properties_changed(changed_props)
+        changed_props = {}
+        for prop in self.props:
+            if self.props[prop].value != old_props[prop].value:
+                changed_props.update({ prop: self.props[prop].value })
+        if changed_props:
+            self.emit_properties_changed(changed_props)
 
     def ofono_changed(self, _name, _varval):
         asyncio.create_task(self.set_props())

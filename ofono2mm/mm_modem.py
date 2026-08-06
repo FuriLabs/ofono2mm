@@ -1074,9 +1074,15 @@ class MMModemInterface(ServiceInterface):
             if name.lower() == "internet":
                 ofono_ctx = ctx[0]
                 ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
-                await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
-                await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
-                await ofono_ctx_interface.call_set_property("Active", Variant('b', True))
+
+                # Setting Protocol needs the context down, so writing the value it
+                # already holds would cost a live PDN.
+                ctx_props = await ofono_ctx_interface.call_get_properties()
+                if not (ctx_props.get('Active', Variant('b', False)).value
+                        and ctx_props.get('Protocol', Variant('s', '')).value == protocol):
+                    await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
+                    await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
+                    await ofono_ctx_interface.call_set_property("Active", Variant('b', True))
                 break
 
         # MBPI did not provision any settings. use user provided bearer info
