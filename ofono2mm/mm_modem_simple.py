@@ -166,7 +166,10 @@ class MMModemSimpleInterface(ServiceInterface):
         if 'apn' not in properties:
             ofono2mm_print("User provided no apn, using default value ''", self.verbose)
 
-        for b in self.mm_modem.bearers:
+        for b in list(self.mm_modem.bearers.keys()):
+            if b not in self.mm_modem.bearers:
+                # bearer was removed by a concurrent task while we were iterating
+                continue
             bearer_apn = self.mm_modem.bearers[b].props['Properties'].value['apn'].value if 'apn' in self.mm_modem.bearers[b].props['Properties'].value else ''
             if bearer_apn == apn:
                 self.mm_modem.bearers[b].props['Properties'] = Variant('a{sv}', properties)

@@ -1057,6 +1057,24 @@ class MMModemInterface(ServiceInterface):
                     ofono2mm_print(f"Failed to get contexts: {e}", self.verbose)
                     return
 
+        protocol = read_setting("protocol", "ip").strip()
+
+        target_ctx = None
+        for ctx in contexts:
+            name = ctx[1].get('Type', Variant('s', '')).value
+            if name.lower() == "internet":
+                target_ctx = ctx[0]
+                break
+
+        # Reuse a bearer already on this context instead of creating a duplicate,
+        # which used to toggle Active off/on even when already up and working.
+        if target_ctx is not None:
+            for existing_path, existing_bearer in self.bearers.items():
+                if existing_bearer.ofono_ctx == target_ctx:
+                    ofono2mm_print(f"Reusing existing bearer {existing_path} for context {target_ctx} instead of creating a duplicate", self.verbose)
+                    existing_bearer.props['Properties'] = Variant('a{sv}', properties)
+                    return existing_path
+
         ofono2mm_print(f"Creating bearer {bearer_i} with properties: {properties}", self.verbose)
         mm_bearer_interface = MMBearerInterface(self.ofono_client, self.modem_name, self.ofono_interfaces, self, self.verbose)
         self.mm_bearer_interfaces.append(mm_bearer_interface)
@@ -1064,26 +1082,22 @@ class MMModemInterface(ServiceInterface):
             "Properties": Variant('a{sv}', properties)
         })
 
-        protocol = read_setting("protocol", "ip").strip()
         ofono2mm_print(f"Creating bearer with protocol {protocol}", self.verbose)
 
         ofono_ctx = None
 
-        for ctx in contexts:
-            name = ctx[1].get('Type', Variant('s', '')).value
-            if name.lower() == "internet":
-                ofono_ctx = ctx[0]
-                ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
+        if target_ctx is not None:
+            ofono_ctx = target_ctx
+            ofono_ctx_interface = self.ofono_client["ofono_context"][ofono_ctx]['org.ofono.ConnectionContext']
 
-                # Setting Protocol needs the context down, so writing the value it
-                # already holds would cost a live PDN.
-                ctx_props = await ofono_ctx_interface.call_get_properties()
-                if not (ctx_props.get('Active', Variant('b', False)).value
-                        and ctx_props.get('Protocol', Variant('s', '')).value == protocol):
-                    await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
-                    await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
-                    await ofono_ctx_interface.call_set_property("Active", Variant('b', True))
-                break
+            # Setting Protocol needs the context down, so writing the value it
+            # already holds would cost a live PDN.
+            ctx_props = await ofono_ctx_interface.call_get_properties()
+            if not (ctx_props.get('Active', Variant('b', False)).value
+                    and ctx_props.get('Protocol', Variant('s', '')).value == protocol):
+                await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
+                await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
+                await ofono_ctx_interface.call_set_property("Active", Variant('b', True))
 
         # MBPI did not provision any settings. use user provided bearer info
         if ofono_ctx is None:
