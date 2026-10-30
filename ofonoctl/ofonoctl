@@ -115,15 +115,18 @@ def action_list():
             for context in contexts:
                 context_path = context[0]
                 apn = context[1].get('AccessPointName', 'N/A')
-                settings = context[1].get('Settings', {})
-                interface = settings.get('Interface', 'N/A')
-                method = settings.get('Method', 'N/A')
-                address = settings.get('Address', 'N/A')
-                gateway = settings.get('Gateway', 'N/A')
-                dns = ', '.join(settings.get('DomainNameServers', []))
-                context_info.append([model, context_path, apn, interface, method, address, gateway, dns])
+                for settings_key, protocol in (('Settings', 'ipv4'), ('IPv6.Settings', 'ipv6')):
+                    settings = context[1].get(settings_key, {})
+                    if not settings:
+                        continue
+                    interface = settings.get('Interface', 'N/A')
+                    method = settings.get('Method', 'N/A')
+                    address = settings.get('Address', 'N/A')
+                    gateway = settings.get('Gateway', 'N/A')
+                    dns = ', '.join(settings.get('DomainNameServers', []))
+                    context_info.append([model, context_path, apn, protocol, interface, method, address, gateway, dns])
         except dbus.exceptions.DBusException:
-            context_info.append([model, "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
+            context_info.append([model, "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"])
 
     modem_table = tabulate.tabulate(
         modem_info,
@@ -133,7 +136,7 @@ def action_list():
 
     context_table = tabulate.tabulate(
         context_info,
-        headers=["Modem", "Context Path", "APN", "Interface", "Method", "Address", "Gateway", "DNS"],
+        headers=["Modem", "Context Path", "APN", "Protocol", "Interface", "Method", "Address", "Gateway", "DNS"],
         tablefmt="grid"
     )
 
