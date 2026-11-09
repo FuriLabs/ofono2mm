@@ -258,6 +258,10 @@ async def main():
         verbose = args.verbose
 
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+    bus.export_object_manager(
+        '/org/freedesktop/ModemManager1',
+        required_interfaces={'org.freedesktop.ModemManager1.Modem'},
+    )
     loop = asyncio.get_running_loop()
 
     mm_manager_interface = MMInterface(loop, bus, verbose=verbose)
