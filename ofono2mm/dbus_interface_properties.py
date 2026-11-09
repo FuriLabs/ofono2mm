@@ -1,6 +1,5 @@
 from typing import Dict, List, Callable
 from dbus_fast import Variant
-from ofono2mm.logging import ofono2mm_print
 import asyncio
 
 class DBusInterfaceProperties:
@@ -23,22 +22,28 @@ class DBusInterfaceProperties:
             self.watchers: Dict[str, List[Callable]] = {}
             self.initialized = False
             self._proxy = None
+            self._property_changed_handler = None
             self._init_lock = asyncio.Lock()
             self._pending_changes = None
 
         async def init(self, skip_props=False):
             async with self._init_lock:
-                if self.initialized:
-                    return
                 if skip_props:
                     self.initialized = True
                     return
 
-                # Keep the proxy we subscribe on so retries and removal can
-                # disconnect the same handler instead of leaking subscriptions.
-                self._proxy = self.ofono_proxy[self.interface]
-                self._proxy.on_property_changed(self._on_property_changed)
                 try:
+                    # Repeated initialization refreshes properties, but keeps
+                    # the original proxy and its single signal subscription.
+                    if self._proxy is None:
+                        self._proxy = self.ofono_proxy[self.interface]
+
+                        async def on_property_changed(prop, value):
+                            if self._property_changed_handler is on_property_changed:
+                                await self._on_property_changed(prop, value)
+
+                        self._property_changed_handler = on_property_changed
+                        self._proxy.on_property_changed(on_property_changed)
                     for attempt in range(3):
                         self._pending_changes = {}
                         try:
@@ -60,8 +65,12 @@ class DBusInterfaceProperties:
                     self._pending_changes = None
 
         def invalidate(self):
+            # Disconnecting doesn't cancel callbacks already queued by dbus-fast.
+            # Retire this handler so they cannot update this or a later attempt.
+            handler = self._property_changed_handler
+            self._property_changed_handler = None
             if self._proxy is not None:
-                self._proxy.off_property_changed(self._on_property_changed)
+                self._proxy.off_property_changed(handler)
                 self._proxy = None
             self.props.clear()
             self.initialized = False
