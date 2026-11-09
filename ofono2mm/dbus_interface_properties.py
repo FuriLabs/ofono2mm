@@ -21,25 +21,50 @@ class DBusInterfaceProperties:
             self.verbose = verbose
             self.props: Dict[str, Variant] = {}
             self.watchers: Dict[str, List[Callable]] = {}
+            self.initialized = False
+            self._proxy = None
+            self._init_lock = asyncio.Lock()
+            self._pending_changes = None
 
         async def init(self, skip_props=False):
-            if skip_props:
-                return
-            retries_left = 3
-            # Sometimes interfaces appear but their methods, properties, etc are not ready yet
-            # So we'll cut it some slack
-            while retries_left > 0:
-                try:
-                    # Watch for property changes to update the internal dict
-                    self.ofono_proxy[self.interface].on_property_changed(self._on_property_changed)
-                    self.props = await self.ofono_proxy[self.interface].call_get_properties()
+            async with self._init_lock:
+                if self.initialized:
                     return
-                except Exception as e:
-                    retries_left -= 1
-                    if retries_left > 0:
-                        await asyncio.sleep(0.5)
-                    else:
-                        ofono2mm_print(f"Interface {self.interface} doesn't have properties? {str(e).strip()}", self.verbose)
+                if skip_props:
+                    self.initialized = True
+                    return
+
+                # Keep the proxy we subscribe on so retries and removal can
+                # disconnect the same handler instead of leaking subscriptions.
+                self._proxy = self.ofono_proxy[self.interface]
+                self._proxy.on_property_changed(self._on_property_changed)
+                try:
+                    for attempt in range(3):
+                        self._pending_changes = {}
+                        try:
+                            props = await self._proxy.call_get_properties()
+                            # Signals received while GetProperties was pending
+                            # are newer than the returned snapshot.
+                            props.update(self._pending_changes)
+                            self.props = props
+                            self.initialized = True
+                            return
+                        except Exception:
+                            if attempt == 2:
+                                raise
+                            await asyncio.sleep(0.5)
+                except Exception:
+                    self.invalidate()
+                    raise
+                finally:
+                    self._pending_changes = None
+
+        def invalidate(self):
+            if self._proxy is not None:
+                self._proxy.off_property_changed(self._on_property_changed)
+                self._proxy = None
+            self.props.clear()
+            self.initialized = False
 
         def __getitem__(self, prop):
             if prop in self.props:
@@ -58,6 +83,8 @@ class DBusInterfaceProperties:
             return prop in self.props
 
         async def _on_property_changed(self, prop, value):
+            if self._pending_changes is not None:
+                self._pending_changes[prop] = value
             if prop in self.props and self.props[prop].value == value.value:
                 # Well that ain't much of a change innit
                 return
@@ -82,7 +109,8 @@ class DBusInterfaceProperties:
         def on(self, prop, callback):
             if prop not in self.watchers:
                 self.watchers[prop] = []
-            self.watchers[prop].append(callback)
+            if callback not in self.watchers[prop]:
+                self.watchers[prop].append(callback)
 
     def __init__(self, ofono_proxy, verbose):
         self.ofono_proxy = ofono_proxy
@@ -97,4 +125,4 @@ class DBusInterfaceProperties:
         return self.interfaces[interface]
 
     def __contains__(self, interface: str) -> bool:
-        return interface in self.interfaces
+        return interface in self.interfaces and self.interfaces[interface].initialized
