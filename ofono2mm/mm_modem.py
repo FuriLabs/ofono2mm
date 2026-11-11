@@ -150,7 +150,7 @@ class MMModemInterface(ServiceInterface):
         await self.set_props()
         self.loop.create_task(self.init_connection_manager())
 
-        await self.release_request_modemmanager()
+        await self.request_modemmanager()
 
     async def add_ofono_interface(self, iface):
         if iface not in self.used_interfaces:
@@ -691,30 +691,17 @@ class MMModemInterface(ServiceInterface):
 
         await asyncio.gather(*promises)
 
-        await self.release_request_modemmanager()
+        await self.request_modemmanager()
 
-    async def release_request_modemmanager(self):
-        ofono2mm_print("Releasing and requesting the bus name", self.verbose)
-
-        if hasattr(self, '_releasing'):
-            ofono2mm_print("Failed to release and request, operation already in progress", self.verbose)
-            return
-        self._releasing = True
-
-        # Release and request the name so other apps realize we're here.
-        # TODO: this feels like it shouldn't be necessary. We are signaling InterfacesAdded, so... why?
-
-        try:
-            await self.bus.release_name('org.freedesktop.ModemManager1')
-        except Exception as e:
-            ofono2mm_print(f"Failed to release name: {e}", self.verbose)
+    async def request_modemmanager(self):
+        # Export and property-change signals announce updates. Dropping the
+        # well-known name makes clients discard otherwise valid modem proxies.
+        ofono2mm_print("Requesting the bus name", self.verbose)
 
         try:
             await self.bus.request_name('org.freedesktop.ModemManager1')
         except Exception as e:
             ofono2mm_print(f"Failed to request name: {e}", self.verbose)
-
-        delattr(self, '_releasing')
 
     async def set_props(self):
         ofono2mm_print("Setting properties", self.verbose)
@@ -730,7 +717,7 @@ class MMModemInterface(ServiceInterface):
                     try:
                         await self.ofono_proxy['org.ofono.Modem'].call_set_property('Online', Variant('b', True))
                         self.was_powered = True
-                        await self.release_request_modemmanager()
+                        await self.request_modemmanager()
                     except Exception as e:
                         # Might happen in airplane mode although powered should be false. Just coverin' our bases.
                         ofono2mm_print(f"Failed to set Online to True: {e}", self.verbose)
