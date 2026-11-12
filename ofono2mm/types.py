@@ -1,3 +1,24 @@
+from enum import IntEnum
+
+
+class ModemState(IntEnum):
+    """ModemManager modem states used by its D-Bus API."""
+
+    FAILED = -1
+    UNKNOWN = 0
+    INITIALIZING = 1
+    LOCKED = 2
+    DISABLED = 3
+    DISABLING = 4
+    ENABLING = 5
+    ENABLED = 6
+    SEARCHING = 7
+    REGISTERED = 8
+    DISCONNECTING = 9
+    CONNECTING = 10
+    CONNECTED = 11
+
+
 MM_MODEM_BAND_UNKNOWN = 0
 # GSM/UMTS bands
 MM_MODEM_BAND_EGSM    = 1

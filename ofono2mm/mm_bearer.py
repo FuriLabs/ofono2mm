@@ -30,7 +30,6 @@ class MMBearerInterface(ServiceInterface):
         self.mm_modem = mm_modem
         self.verbose = verbose
         self.disconnecting = False
-        self.reconnect_task = None
         self.ofono_ctx = None
         self._context_interface = None
         self._context_handler = None
@@ -242,9 +241,7 @@ class MMBearerInterface(ServiceInterface):
             ofono2mm_print(f"oFono context {self.ofono_ctx} is already active on {self.props['Interface'].value}", self.verbose)
             return
 
-        # Mark this Active bounce as self-initiated so ofono_context_changed doesn't
-        # mistake our own False->True cycle for an unexpected drop and spawn a
-        # competing reconnect_task via network_manager_set_apn(force=True)
+        # Track our own context activation while it is in progress.
         self.disconnecting = True
         try:
             await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', False)), timeout=5.0)
@@ -295,8 +292,6 @@ class MMBearerInterface(ServiceInterface):
             if self.active_connect >= 1:
                 self.active_connect -= 1
 
-        # Clear the reconnection task
-        self.reconnect_task = None
         ofono2mm_print(f"Number of active connection requests: {self.active_connect}", self.verbose)
 
     @method()
@@ -304,23 +299,9 @@ class MMBearerInterface(ServiceInterface):
         ofono2mm_print("Called bearer disconnect", self.verbose)
         await self.doDisconnect()
 
-    async def cancel_reconnect_task(self):
-        if self.reconnect_task is not None:
-            self.reconnect_task.cancel()
-            try:
-                await self.reconnect_task
-            except asyncio.CancelledError:
-                # Finally
-                pass
-            finally:
-                self.reconnect_task = None
-
     async def doDisconnect(self):
         ofono2mm_print(f"Disconnecting the bearer at path {self.own_object_path} with ofono context {self.ofono_ctx}", self.verbose)
         self.disconnecting = True
-
-        # Cancel an eventual reconnection task
-        await self.cancel_reconnect_task()
 
         if not self.ofono_ctx:
             self.disconnecting = False
@@ -340,14 +321,8 @@ class MMBearerInterface(ServiceInterface):
                 # The name is only ever copied out of a populated Settings, so without
                 # this it survives the deactivation.
                 self.props['Interface'] = Variant('s', '')
-
-            if self.disconnecting and value.value:
-                self.disconnecting = False
-            elif not self.disconnecting and (not value.value) and self.reconnect_task is None and self.props['Connected'].value:
-                # Initiate a reconnection using NetworkManager.
-                # TODO: ideally NM would take care of this itself once it learns that we lost the connection.
-
-                self.reconnect_task = asyncio.create_task(self.mm_modem.mm_modem_simple_interface.network_manager_set_apn(force=True))
+                self.props['Ip4Config'] = Variant('a{sv}', {'method': Variant('u', 0)})
+                self.props['Ip6Config'] = Variant('a{sv}', {'method': Variant('u', 0)})
 
             self.props['Connected'] = value
         elif propname == "Settings":
@@ -417,6 +392,10 @@ class MMBearerInterface(ServiceInterface):
                 changed_props.update({ prop: self.props[prop].value })
         if changed_props:
             self.emit_properties_changed(changed_props)
+        if propname == 'Active':
+            # NetworkManager detects an unexpected modem CONNECTED -> REGISTERED
+            # transition and applies its own retry/autoconnect policy.
+            self.mm_modem.update_bearer_state()
 
     def ofono_changed(self, _name, _varval):
         asyncio.create_task(self.set_props())

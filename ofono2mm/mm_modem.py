@@ -27,7 +27,7 @@ from ofono2mm.mm_modem_cell_broadcast import MMModemCellBroadcastInterface
 from ofono2mm.logging import ofono2mm_print
 from ofono2mm.utils import read_setting, save_setting, netmask_to_prefix
 from ofono2mm.dbus_interface_properties import DBusInterfaceProperties
-from ofono2mm.types import _BANDS
+from ofono2mm.types import ModemState, _BANDS
 
 bearer_i = 0
 
@@ -425,6 +425,21 @@ class MMModemInterface(ServiceInterface):
     def get_mm_modem_simple_interface(self):
         return self.mm_modem_simple_interface
 
+    def _state_with_bearers(self, state):
+        if state not in (ModemState.REGISTERED, ModemState.CONNECTED):
+            return state
+        if any(bearer.props['Connected'].value for bearer in self.bearers.values()):
+            return ModemState.CONNECTED
+        return ModemState.REGISTERED
+
+    def update_bearer_state(self):
+        old = self.props['State'].value
+        state = self._state_with_bearers(old)
+        if state != old:
+            self.props['State'] = Variant('i', state)
+            self.StateChanged(old, state, 0)
+            self.emit_properties_changed({'State': state})
+
     async def check_ofono_contexts(self):
         ofono2mm_print("Checking ofono contexts", self.verbose)
 
@@ -568,6 +583,7 @@ class MMModemInterface(ServiceInterface):
 
         if self.props['Bearers'].value != old_bearer_list:
             self.emit_properties_changed({'Bearers': self.props['Bearers'].value})
+        self.update_bearer_state()
 
         self.ofono_interfaces['org.ofono.ConnectionManager'].on_context_added(self.ofono_context_added)
 
@@ -677,6 +693,7 @@ class MMModemInterface(ServiceInterface):
 
             bearer_i += 1
             self.emit_properties_changed({'Bearers': self.props['Bearers'].value})
+            self.update_bearer_state()
 
     async def sim_unlocked(self):
         ofono2mm_print("SIM is now unlocked, exporting all interfaces again", self.verbose)
@@ -967,6 +984,7 @@ class MMModemInterface(ServiceInterface):
         self.props['Manufacturer'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Manufacturer'].value if 'Manufacturer' in self.ofono_interface_props['org.ofono.Modem'].props else 'ofono')
         self.props['Model'] = Variant('s', self.ofono_interface_props['org.ofono.Modem']['Model'].value if 'Model' in self.ofono_interface_props['org.ofono.Modem'].props else 'binder')
 
+        self.props['State'] = Variant('i', self._state_with_bearers(self.props['State'].value))
         if old_state != self.props['State'].value:
             self.StateChanged(old_state, self.props['State'].value, 0)
 
@@ -1094,6 +1112,7 @@ class MMModemInterface(ServiceInterface):
 
         bearer_i += 1
         self.emit_properties_changed({'Bearers': self.props['Bearers'].value})
+        self.update_bearer_state()
 
         ofono2mm_print(f"Exported bearer at object path {object_path}", self.verbose)
 
@@ -1114,6 +1133,7 @@ class MMModemInterface(ServiceInterface):
                 self.mm_bearer_interfaces.remove(bearer)
             self.bus.unexport(path)
             self.emit_properties_changed({'Bearers': self.props['Bearers'].value})
+            self.update_bearer_state()
 
             if path in self.mm_interface_objects:
                 self.mm_interface_objects.remove(path)
@@ -1278,7 +1298,9 @@ class MMModemInterface(ServiceInterface):
 
         cell_info = {
             "cell-type": Variant("u", self.mm_cell_type),
-            "serving": Variant("b", self.props['State'].value == 8), # 8 should mean its registered correctly to a network
+            "serving": Variant("b", self.props['State'].value in (
+                ModemState.REGISTERED, ModemState.DISCONNECTING,
+                ModemState.CONNECTING, ModemState.CONNECTED)),
         }
 
         return [cell_info]
