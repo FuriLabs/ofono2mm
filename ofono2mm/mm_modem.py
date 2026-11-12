@@ -21,7 +21,7 @@ from ofono2mm.mm_modem_oma import MMModemOmaInterface
 from ofono2mm.mm_modem_signal import MMModemSignalInterface
 from ofono2mm.mm_modem_location import MMModemLocationInterface
 from ofono2mm.mm_sim import MMSimInterface
-from ofono2mm.mm_bearer import MMBearerInterface
+from ofono2mm.mm_bearer import MMBearerInterface, BearerConnectionMonitor
 from ofono2mm.mm_modem_voice import MMModemVoiceInterface
 from ofono2mm.mm_modem_cell_broadcast import MMModemCellBroadcastInterface
 from ofono2mm.logging import ofono2mm_print
@@ -66,6 +66,8 @@ class MMModemInterface(ServiceInterface):
         self.selected_current_mode = []
         self.sim = Variant('o', f'/org/freedesktop/ModemManager1/SIM/{self.index}')
         self.bearers = {}
+        self._closed = False
+        self.bearer_monitor = BearerConnectionMonitor(self)
 
         self.was_powered = False
         self.enabled = True
@@ -218,12 +220,14 @@ class MMModemInterface(ServiceInterface):
         ofono2mm_print("Successfully restored saved bands", self.verbose)
 
     async def init_connection_manager(self):
-        while True:
+        while not self._closed:
             ofono2mm_print("Waiting for oFono connection manager to appear", self.verbose)
             if 'org.ofono.ConnectionManager' in self.ofono_interfaces:
                 ofono2mm_print("oFono connection manager appeared, initializing check ofono contexts", self.verbose)
                 await self.check_ofono_contexts()
                 await self.set_props()
+                if not self._closed:
+                    self.bearer_monitor.start()
                 return
             await asyncio.sleep(0.3)
 
@@ -390,6 +394,8 @@ class MMModemInterface(ServiceInterface):
         self.loop.create_task(self.init_cell_broadcast())
 
     def unexport_mm_interface_objects(self):
+        self._closed = True
+        self.bearer_monitor.stop()
         for bearer in tuple(self.bearers.values()):
             bearer.close()
         self.mm_sim_interface = None
@@ -439,6 +445,65 @@ class MMModemInterface(ServiceInterface):
             self.props['State'] = Variant('i', state)
             self.StateChanged(old, state, 0)
             self.emit_properties_changed({'State': state})
+
+    async def recover_bearer_context(self, path):
+        def context_bearers():
+            return [bearer for bearer in self.bearers.values() if bearer.ofono_ctx == path]
+
+        def can_recover():
+            if self._closed or not self.enabled or self.props['State'].value < ModemState.REGISTERED:
+                return False
+            bearers = context_bearers()
+            return (any(bearer.props['Connected'].value for bearer in bearers)
+                    and not any(bearer.disconnecting or bearer.active_connect for bearer in bearers))
+
+        if not can_recover():
+            return
+        modem_props = self.ofono_interface_props['org.ofono.Modem'].props
+        if not all(modem_props.get(prop, Variant('b', False)).value for prop in ('Powered', 'Online')):
+            return
+        manager = self.ofono_proxy['org.ofono.ConnectionManager']
+        manager_props = await asyncio.wait_for(
+            manager.call_get_properties(), timeout=5)
+        if (manager_props.get('Suspended', Variant('b', False)).value
+                or not manager_props.get('Powered', Variant('b', True)).value):
+            return
+        context = self.ofono_client['ofono_context'][path]['org.ofono.ConnectionContext']
+        context_props = await asyncio.wait_for(
+            context.call_get_properties(), timeout=5)
+        # A user may have disconnected while the D-Bus calls were in flight.
+        if not can_recover() or context_props.get('Type', Variant('s', '')).value != 'internet':
+            return
+        inactive = Variant('b', False)
+        if not context_props.get('Active', inactive).value:
+            for bearer in context_bearers():
+                bearer.ofono_context_changed('Active', inactive)
+            return
+        ipv4_settings = context_props.get('Settings', Variant('a{sv}', {})).value
+        ipv6_settings = context_props.get('IPv6.Settings', Variant('a{sv}', {})).value
+        interface = ipv4_settings.get('Interface') or ipv6_settings.get('Interface')
+        if interface is None:
+            return
+        if self.bearer_monitor.link_is_up(interface.value) is not False:
+            # A context may have rotated to a healthy interface while we read
+            # its properties. Refresh aliases rather than bouncing the PDN.
+            for bearer in context_bearers():
+                for name in ('Settings', 'IPv6.Settings', 'Active'):
+                    if name in context_props:
+                        bearer.ofono_context_changed(name, context_props[name])
+            return
+        ofono2mm_print(f"Data context {path} reports active but {interface.value} stayed down; clearing it", self.verbose)
+        try:
+            await asyncio.wait_for(
+                context.call_set_property('Active', inactive), timeout=10)
+        finally:
+            # Announce the loss even if oFono omitted the signal or the reset
+            # failed. NM owns reconnection policy; never enable WWAN here.
+            if not self._closed:
+                for bearer in context_bearers():
+                    interface = bearer.props['Interface'].value
+                    if interface and self.bearer_monitor.link_is_up(interface) is False:
+                        bearer.ofono_context_changed('Active', inactive)
 
     async def check_ofono_contexts(self):
         ofono2mm_print("Checking ofono contexts", self.verbose)
