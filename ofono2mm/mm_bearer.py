@@ -1,6 +1,8 @@
 import asyncio
 
 from copy import deepcopy
+from pathlib import Path
+from time import monotonic
 
 from dbus_fast.service import ServiceInterface, method, dbus_property
 from dbus_fast.constants import PropertyAccess
@@ -8,6 +10,7 @@ from dbus_fast import Variant
 
 from ofono2mm.utils import async_retryable, save_setting, read_setting, netmask_to_prefix
 from ofono2mm.logging import ofono2mm_print
+from ofono2mm.types import ModemState
 
 # oFono only replies to Active=True once the data call has actually been set up or has
 # failed. On a modem where setup routinely takes longer than the previous 5s limit, a
@@ -30,8 +33,9 @@ class MMBearerInterface(ServiceInterface):
         self.mm_modem = mm_modem
         self.verbose = verbose
         self.disconnecting = False
-        self.reconnect_task = None
         self.ofono_ctx = None
+        self._context_interface = None
+        self._context_handler = None
         self.active_connect = 0
         self.own_object_path = None
         self.props = {
@@ -181,11 +185,53 @@ class MMBearerInterface(ServiceInterface):
         if changed_props:
             self.emit_properties_changed(changed_props)
 
+    @staticmethod
+    def interface_is_up(interface):
+        """Read IFF_UP, not carrier/operstate (cellular links may report unknown)."""
+        if not interface or '/' in interface or interface in ('.', '..'):
+            return None
+        try:
+            flags = int((Path('/sys/class/net') / interface / 'flags').read_text().strip(), base=16)
+            return bool(flags & 1)
+        except FileNotFoundError:
+            return False
+        except (OSError, ValueError):
+            return None  # An unreadable link is not proof of a disconnect.
+
     def has_usable_config(self):
+        interface = self.props['Interface'].value
+        if not interface:
+            return False
+        if self.interface_is_up(interface) is False:
+            return False
+
         # oFono supplies no IPv4 address on these modems, so either family satisfies this.
-        return bool(self.props['Interface'].value
-                    and (self.props['Ip4Config'].value.get('address')
-                         or self.props['Ip6Config'].value.get('address')))
+        return any([
+            self.props['Ip4Config'].value.get('address'),
+            self.props['Ip6Config'].value.get('address'),
+        ])
+
+    def set_ofono_context(self, path):
+        if self.ofono_ctx == path and self._context_interface is not None:
+            return
+        self.close()
+        self.ofono_ctx = path
+        proxy = self.ofono_client['ofono_context'][path]['org.ofono.ConnectionContext']
+
+        def changed(name, value):
+            # Ignore queued signals after this context has been detached.
+            if self._context_interface is proxy:
+                self.ofono_context_changed(name, value)
+
+        self._context_interface = proxy
+        self._context_handler = changed
+        proxy.on_property_changed(changed)
+
+    def close(self):
+        proxy, handler = self._context_interface, self._context_handler
+        self._context_interface = self._context_handler = None
+        if proxy is not None:
+            proxy.off_property_changed(handler)
 
     @method()
     async def Connect(self):
@@ -218,14 +264,16 @@ class MMBearerInterface(ServiceInterface):
             ofono2mm_print(f"oFono context {self.ofono_ctx} is already active on {self.props['Interface'].value}", self.verbose)
             return
 
-        # Mark this Active bounce as self-initiated so ofono_context_changed doesn't
-        # mistake our own False->True cycle for an unexpected drop and spawn a
-        # competing reconnect_task via network_manager_set_apn(force=True)
+        # The interface monitor must not mistake our own activation for a drop.
         self.disconnecting = True
         try:
-            await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', False)), timeout=5.0)
+            await asyncio.wait_for(
+                ofono_ctx_interface.call_set_property("Active", Variant('b', False)),
+                timeout=5.0)
             await ofono_ctx_interface.call_set_property("Protocol", Variant('s', protocol))
-            await asyncio.wait_for(ofono_ctx_interface.call_set_property("Active", Variant('b', True)), timeout=ACTIVATE_TIMEOUT_SECONDS)
+            await asyncio.wait_for(
+                ofono_ctx_interface.call_set_property("Active", Variant('b', True)),
+                timeout=ACTIVATE_TIMEOUT_SECONDS)
         except Exception as e:
             if "GPRS" in str(e):
                 # no signal? wait a litle and try again
@@ -247,7 +295,7 @@ class MMBearerInterface(ServiceInterface):
         if not self.ofono_ctx:
             raise Exception("No oFono context set for bearer")
 
-        ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
+        ofono_ctx_interface = self._context_interface
         ofono2mm_print(f"Number of active connection requests: {self.active_connect}", self.verbose)
 
         protocol = read_setting("protocol", "ip").strip()
@@ -271,8 +319,6 @@ class MMBearerInterface(ServiceInterface):
             if self.active_connect >= 1:
                 self.active_connect -= 1
 
-        # Clear the reconnection task
-        self.reconnect_task = None
         ofono2mm_print(f"Number of active connection requests: {self.active_connect}", self.verbose)
 
     @method()
@@ -280,31 +326,16 @@ class MMBearerInterface(ServiceInterface):
         ofono2mm_print("Called bearer disconnect", self.verbose)
         await self.doDisconnect()
 
-    async def cancel_reconnect_task(self):
-        if self.reconnect_task is not None:
-            self.reconnect_task.cancel()
-            try:
-                await self.reconnect_task
-            except asyncio.CancelledError:
-                # Finally
-                pass
-            finally:
-                self.reconnect_task = None
-
     async def doDisconnect(self):
         ofono2mm_print(f"Disconnecting the bearer at path {self.own_object_path} with ofono context {self.ofono_ctx}", self.verbose)
         self.disconnecting = True
 
-        # Cancel an eventual reconnection task
-        await self.cancel_reconnect_task()
-
-        if not self.ofono_ctx:
+        try:
+            if not self.ofono_ctx:
+                raise Exception("No oFono context set for bearer")
+            await self._context_interface.call_set_property("Active", Variant('b', False))
+        finally:
             self.disconnecting = False
-            raise Exception("No oFono context set for bearer")
-
-        ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
-        await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
-        self.disconnecting = False
 
     def ofono_context_changed(self, propname, value):
         ofono2mm_print(f"oFono context changed for prop name {propname} set to value {value}", self.verbose)
@@ -316,14 +347,8 @@ class MMBearerInterface(ServiceInterface):
                 # The name is only ever copied out of a populated Settings, so without
                 # this it survives the deactivation.
                 self.props['Interface'] = Variant('s', '')
-
-            if self.disconnecting and value.value:
-                self.disconnecting = False
-            elif not self.disconnecting and (not value.value) and self.reconnect_task is None and self.props['Connected'].value:
-                # Initiate a reconnection using NetworkManager.
-                # TODO: ideally NM would take care of this itself once it learns that we lost the connection.
-
-                self.reconnect_task = asyncio.create_task(self.mm_modem.mm_modem_simple_interface.network_manager_set_apn(force=True))
+                self.props['Ip4Config'] = Variant('a{sv}', {'method': Variant('u', 0)})
+                self.props['Ip6Config'] = Variant('a{sv}', {'method': Variant('u', 0)})
 
             self.props['Connected'] = value
         elif propname == "Settings":
@@ -393,6 +418,71 @@ class MMBearerInterface(ServiceInterface):
                 changed_props.update({ prop: self.props[prop].value })
         if changed_props:
             self.emit_properties_changed(changed_props)
+        if propname == 'Active':
+            # NetworkManager detects an unexpected modem CONNECTED -> REGISTERED
+            # transition and applies its own retry/autoconnect policy.
+            self.mm_modem.update_bearer_state()
 
     def ofono_changed(self, _name, _varval):
         asyncio.create_task(self.set_props())
+
+
+class BearerConnectionMonitor:
+    def __init__(self, modem, *, interval=2.0, grace=5.0, clock=monotonic,
+                 link_is_up=MMBearerInterface.interface_is_up):
+        self.modem = modem
+        self.modem_name = modem.modem_name
+        self.verbose = modem.verbose
+        self.interval, self.grace = interval, grace
+        self.clock, self.link_is_up = clock, link_is_up
+        self.down_since = {}
+        self.task = None
+
+    def start(self):
+        if self.task is None:
+            self.task = asyncio.create_task(self.run())
+
+    def stop(self):
+        if self.task is not None:
+            self.task.cancel()
+            self.task = None
+        self.down_since.clear()
+
+    async def run(self):
+        while True:
+            await asyncio.sleep(self.interval)
+            try:
+                await self.check()
+            except Exception as error:
+                ofono2mm_print(f"Failed to check data interfaces: {error}", self.verbose)
+
+    async def check(self):
+        if not self.modem.enabled or self.modem.props['State'].value < ModemState.REGISTERED:
+            self.down_since.clear()
+            return
+        contexts = {}
+        for bearer in self.modem.bearers.values():
+            if bearer.ofono_ctx:
+                contexts.setdefault(bearer.ofono_ctx, []).append(bearer)
+
+        down_contexts = {}
+        for path, bearers in contexts.items():
+            if any(bearer.disconnecting or bearer.active_connect for bearer in bearers):
+                continue
+            interfaces = {bearer.props['Interface'].value for bearer in bearers
+                          if bearer.props['Connected'].value and bearer.props['Interface'].value}
+            if any(self.link_is_up(interface) is False for interface in interfaces):
+                down_contexts[path] = interfaces
+
+        # Keep timers only for contexts that are still down and idle.
+        self.down_since = {path: timer for path, timer in self.down_since.items()
+                           if path in down_contexts}
+        for path, interfaces in down_contexts.items():
+            previous_interfaces, since = self.down_since.get(path, (None, self.clock()))
+            if previous_interfaces != interfaces:
+                self.down_since[path] = (interfaces, self.clock())
+                continue
+            if self.clock() - since >= self.grace:
+                # One operation per oFono context, even if several MM bearers use it.
+                self.down_since.pop(path, None)
+                await self.modem.recover_bearer_context(path)
