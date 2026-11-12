@@ -32,6 +32,8 @@ class MMBearerInterface(ServiceInterface):
         self.disconnecting = False
         self.reconnect_task = None
         self.ofono_ctx = None
+        self._context_interface = None
+        self._context_handler = None
         self.active_connect = 0
         self.own_object_path = None
         self.props = {
@@ -187,6 +189,28 @@ class MMBearerInterface(ServiceInterface):
                     and (self.props['Ip4Config'].value.get('address')
                          or self.props['Ip6Config'].value.get('address')))
 
+    def set_ofono_context(self, path):
+        if self.ofono_ctx == path and self._context_interface is not None:
+            return
+        self.close()
+        self.ofono_ctx = path
+        proxy = self.ofono_client['ofono_context'][path]['org.ofono.ConnectionContext']
+
+        def changed(name, value):
+            # Ignore queued signals after this context has been detached.
+            if self._context_interface is proxy:
+                self.ofono_context_changed(name, value)
+
+        self._context_interface = proxy
+        self._context_handler = changed
+        proxy.on_property_changed(changed)
+
+    def close(self):
+        proxy, handler = self._context_interface, self._context_handler
+        self._context_interface = self._context_handler = None
+        if proxy is not None:
+            proxy.off_property_changed(handler)
+
     @method()
     async def Connect(self):
         ofono2mm_print("Called bearer connect", self.verbose)
@@ -247,7 +271,7 @@ class MMBearerInterface(ServiceInterface):
         if not self.ofono_ctx:
             raise Exception("No oFono context set for bearer")
 
-        ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
+        ofono_ctx_interface = self._context_interface
         ofono2mm_print(f"Number of active connection requests: {self.active_connect}", self.verbose)
 
         protocol = read_setting("protocol", "ip").strip()
@@ -302,7 +326,7 @@ class MMBearerInterface(ServiceInterface):
             self.disconnecting = False
             raise Exception("No oFono context set for bearer")
 
-        ofono_ctx_interface = self.ofono_client["ofono_context"][self.ofono_ctx]['org.ofono.ConnectionContext']
+        ofono_ctx_interface = self._context_interface
         await ofono_ctx_interface.call_set_property("Active", Variant('b', False))
         self.disconnecting = False
 
